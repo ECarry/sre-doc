@@ -1,6 +1,6 @@
 {
   "title": "Docker",
-  "description": "The description of root folder (optional)",
+  "description": "Empowers SRE with consistency and scalability.",
   "root": true,
   "icon": "docker"
 }

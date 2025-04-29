@@ -1,6 +1,6 @@
 {
   "title": "Linux",
-  "description": "The description of root folder (optional)",
+  "description": "Underpins the craft of SRE.",
   "root": true,
   "icon": "linux",
   "pages": ["---Introduction---", "index", "what-is-fumadocs"]

@@ -1,13 +1,13 @@
 import { DocsLayout, type DocsLayoutProps } from "fumadocs-ui/layouts/docs";
 import type { ReactNode } from "react";
-import { baseOptions, linkItems } from "@/app/layout.config";
+import { baseOptions } from "@/app/layout.config";
 import { source } from "@/lib/source";
 import { FaLinux } from "react-icons/fa";
 
 const docsOptions: DocsLayoutProps = {
   ...baseOptions,
   tree: source.pageTree,
-  links: [linkItems[linkItems.length - 1]],
+  links: [],
   sidebar: {
     tabs: {
       transform(option, node) {

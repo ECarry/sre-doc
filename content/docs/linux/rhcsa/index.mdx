@@ -1,0 +1,121 @@
+---
+title: Essential Commands
+description: Master the fundamental Linux commands for RHCSA certification
+index: true
+---
+
+# Essential Linux Commands
+
+Mastering essential Linux commands is a fundamental requirement for the RHCSA certification and forms the foundation of all Linux system administration tasks.
+
+## File Navigation Commands
+
+| Command | Description | Common Options |
+|---------|-------------|----------------|
+| `ls` | List directory contents | `-l` (long format), `-a` (all files), `-h` (human-readable sizes) |
+| `cd` | Change directory | `~` (home), `-` (previous directory) |
+| `pwd` | Print working directory | None |
+| `find` | Search for files | `-name`, `-type`, `-size`, `-exec` |
+| `locate` | Find files by name using database | `-i` (case-insensitive) |
+
+## File Management Commands
+
+| Command | Description | Common Options |
+|---------|-------------|----------------|
+| `cp` | Copy files and directories | `-r` (recursive), `-p` (preserve attributes) |
+| `mv` | Move or rename files and directories | `-i` (interactive), `-f` (force) |
+| `rm` | Remove files or directories | `-r` (recursive), `-f` (force) |
+| `mkdir` | Create directories | `-p` (create parent directories) |
+| `rmdir` | Remove empty directories | `-p` (remove parent directories) |
+| `touch` | Create empty files or update timestamps | `-a` (access time), `-m` (modification time) |
+
+## File Viewing Commands
+
+| Command | Description | Common Options |
+|---------|-------------|----------------|
+| `cat` | Concatenate and display file content | `-n` (number lines) |
+| `less` | View file content with pagination | `/pattern` (search), `q` (quit) |
+| `head` | Display beginning of a file | `-n` (number of lines) |
+| `tail` | Display end of a file | `-n` (number of lines), `-f` (follow) |
+| `grep` | Search text using patterns | `-i` (case-insensitive), `-r` (recursive) |
+
+## File Editing
+
+| Editor | Description | Basic Usage |
+|--------|-------------|-------------|
+| `vi`/`vim` | Text editor (RHCSA requirement) | `i` (insert mode), `:wq` (save and quit) |
+| `nano` | Simple text editor | `Ctrl+O` (save), `Ctrl+X` (exit) |
+
+## System Information
+
+| Command | Description | Useful Options |
+|---------|-------------|----------------|
+| `uname` | Show system information | `-a` (all information) |
+| `hostname` | Show or set system hostname | `-f` (fully qualified domain name) |
+| `dmesg` | Display kernel messages | `--level=err` (only errors) |
+| `lscpu` | Display CPU information | None |
+| `lsblk` | List block devices | `-f` (show filesystems) |
+| `df` | Show disk space usage | `-h` (human-readable) |
+| `du` | Show directory space usage | `-sh` (summary, human-readable) |
+
+## Process Management
+
+| Command | Description | Common Options |
+|---------|-------------|----------------|
+| `ps` | Display current processes | `aux` (all processes) |
+| `top` | Interactive process viewer | `k` (kill process), `r` (renice) |
+| `kill` | Terminate processes | `-9` (force kill) |
+| `nice` | Run command with modified priority | `-n` (priority level) |
+
+## Practical Examples
+
+### Finding Files
+
+```bash
+# Find all .conf files in /etc
+find /etc -name "*.conf"
+
+# Find files larger than 100MB
+find /home -type f -size +100M
+
+# Find files modified in the last 24 hours
+find /var/log -type f -mtime -1
+```
+
+### Text Processing
+
+```bash
+# Find all lines containing "error" in logs
+grep -i error /var/log/messages
+
+# Count occurrences of a pattern
+grep -c "Failed password" /var/log/secure
+
+# Show the last 100 lines of a log file
+tail -n 100 /var/log/messages
+```
+
+### Process Management
+
+```bash
+# Find process by name
+ps aux | grep httpd
+
+# Kill a process by PID
+kill 1234
+
+# Kill all processes with a specific name
+pkill firefox
+```
+
+## Exam Tips
+
+For the RHCSA exam, practice these essential commands thoroughly:
+
+1. Navigation in the filesystem without using graphical tools
+2. Creating, viewing, and editing files using vim
+3. Finding files and content within files
+4. Managing processes
+5. Reading and understanding system information
+
+Remember that the RHCSA exam is performance-based, so you'll need to demonstrate practical command-line skills rather than just theory knowledge.

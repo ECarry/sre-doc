@@ -3,5 +3,16 @@
   "description": "Underpins the craft of SRE.",
   "root": true,
   "icon": "linux",
-  "pages": ["---Introduction---", "index", "what-is-fumadocs"]
+  "pages": [
+    "---Introduction---",
+    "index",
+    "what-is-fumadocs",
+    "---RHCSA---",
+    "about-rhcsa",
+    "rhcsa",
+    "---RHCE---",
+    "about-rhce",
+    "---RHCA---",
+    "about-rhca"
+  ]
 }

@@ -1,0 +1,7 @@
+{
+  "title": "Linux",
+  "description": "The description of root folder (optional)",
+  "root": true,
+  "icon": "linux",
+  "pages": ["---Introduction---", "index", "what-is-fumadocs"]
+}

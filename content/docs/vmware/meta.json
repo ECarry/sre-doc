@@ -1,0 +1,13 @@
+{
+  "title": "VMware",
+  "description": "Empowers SRE with consistency and scalability.",
+  "root": true,
+  "icon": "vmware",
+  "pages": [
+    "---Introduction---",
+    "index",
+    "---Resolution---",
+    "resolution-index",
+    "manage-vsan-disk"
+  ]
+}

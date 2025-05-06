@@ -1,0 +1,6 @@
+{
+  "title": "Network",
+  "description": "Empowers SRE with consistency and scalability.",
+  "root": true,
+  "icon": "docker"
+}

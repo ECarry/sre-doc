@@ -1,0 +1,305 @@
+---
+title: Using esxcli commands
+description: Sometimes during disk failure event or other hardware events CLI is needed in order to remove/recreate/mount/dismount disk groups. This document will guide on how to interface with a vSAN disk group via CLI
+---
+
+## Issue/Introduction
+
+Sometimes during disk failure event or other hardware events CLI is needed in order to remove/recreate/mount/dismount disk groups. This document will guide on how to interface with a vSAN disk group via CLI
+
+## Environment
+
+- VMware vSAN 6.x
+- VMware vSAN 7.x
+- VMware vSAN 8.x
+
+## Resolution
+
+<Callout>
+  Before following the below action plan, we need check the ESXi host logs to
+  check for the failure reported on the faulty drive. If vSAN has acknowledged
+  the device as faulty or marked it as offline, we can proceed with the below
+  steps.
+</Callout>
+
+If found not to be a hardware issue, we would need to check the driver and the firmware of the faulty drive.
+
+**In a case where Deduplication & Compression feature is enabled on the affected Disk Group:**
+
+- Cache Disk failure --> The whole Disk Group will be down
+- Capacity Disk failure --> The whole Disk Group will be down
+
+**In a case where Deduplication & Compression feature is not enabled:**
+
+- Cache Disk failure --> The whole Disk Group will be down
+- Capacity Disk failure --> Only the failed Disk will be down
+
+**To remove and recreate a disk group using esxcli commands:**
+
+<Callout title="Note" type="error">
+  These steps can be data-destructive if not followed carefully.
+</Callout>
+
+<div className="fd-steps">
+  <div className="fd-step">
+    Log in to the ESXi host that owns the disk group as the root user using SSH.
+  </div>
+
+  <div className="fd-step">
+    Run one of these commands to put the host in Maintenance mode. There are 3 options:
+
+<Callout title="Note" type="error">
+  VMware recommends using the **ensureObjectAccessibility** option. Failure to
+  use this **ensureObjectAccessibility** mode or **evacuateAllData** mode may
+  result in data loss.
+</Callout>
+
+    - **Recommended**:
+      - Ensure accessibility of data:
+        ```bash
+        esxcli system maintenanceMode set --enable true -m ensureObjectAccessibility
+        ```
+      - Evacuate data:
+        ```bash
+        esxcli system maintenanceMode set --enable true -m evacuateAllData
+        ```
+    - **Not recommended**:
+      - Unless recommended by VMware Support or in addressing a failed disk scenario. Ensure accessibility or full data migration cannot be used of a failed disk.
+      - Don't evacuate data:
+        ```bash
+        esxcli system maintenanceMode set --enable true -m noAction
+        ```
+
+  </div>
+
+  <div className="fd-step">
+    Record the cache and capacity disk UUIDs in the existing group by running this command:
+
+    ```bash
+    [root@VMware:~] esxcli vsan storage list
+    Example output of a capacity tier device:
+    naa.123456XXXXXXXXXXX:
+    Device: naa.123456XXXXXXXXXXX
+    Display Name: naa.123456XXXXXXXXXXX
+    Is SSD: true
+    VSAN UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxx8fa3
+    VSAN Disk Group UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxd008e
+    VSAN Disk Group Name: naa.50000XXXXX1245
+    Used by this host: true
+    In CMMDS: true
+    On-disk format version: 5
+    Deduplication: true
+    Compression: true
+    Checksum: 5356031598619392290
+    Checksum OK: true
+    Is Capacity Tier: true
+    Encryption: false
+    DiskKeyLoaded: false
+    ```
+
+**Note**: For a cache disk:
+
+- The VSAN UUID and VSAN Disk Group UUID fields will match
+- Output will report: **Is Capacity Tier: false**
+
+</div>
+
+<div className="fd-step">
+    Then remove the disk group
+
+    ```bash
+    esxcli vsan storage remove -u <VSAN Disk Group UUID>
+    ```
+
+**Note**: Always double check the disk group UUID with the command:
+
+    ```bash
+    esxcli vsan storage list
+    ```
+
+    **Note: If just removing a single absent capacity disk from an existing disk group with Dedup turned off use -d (or -u if absent) on the disk you want to remove:**
+
+    ```bash
+    esxcli vsan storage remove -d <naa.xxxxxxx>
+    ```
+
+    ```bash
+    esxcli vsan storage remove -u <UUID of the absent capacity disk to remove>
+    ```
+
+If the command fails, try rebooting the host and trying again.
+
+**Note**: If command fails and a reboot wants to be avoided for any reason, please refer to 'Additional Information' section of this KB for possible workaround.
+
+  </div>
+
+<div className="fd-step">
+  If you have replaced physical disks, see the [Additional
+  Information](#additional-information) section.
+</div>
+
+<div className="fd-step">
+  For all-flash vSAN, tag the capacity disk(s) appropriately:
+
+1.
+
+```bash
+esxcli vsan storage tag add -d <device id> -t capacityFlash
+```
+
+2. repeat for all capacity disks
+
+</div>
+
+<div className="fd-step">
+  Create the disk group, using this command:
+
+```bash
+esxcli vsan storage add -s naa.xxxxxx -d naa.xxxxxxx -d naa.xxxxxxxxxx -d naa.xxxxxxxxxxxx
+```
+
+**Note**: If just adding a single capacity disk to an existing disk group with Dedup turned off use -s on the cache of the existing disk group then -d the disk you want to add:
+
+```bash
+esxcli vsan storage add -s naa.xxxxxx -d naa.xxxxxxx
+```
+
+Where naa.xxxxxx is the NAA ID of the disk device and the disk devices are identified as per these options:
+
+- -s indicates a cache disk.
+- -d indicates a capacity disk.
+
+</div>
+
+<div className="fd-step">
+  Run the `esxcli vsan storage list` command to see the new disk group and verify that all disks are reporting True in the "In CMMDS:" field output.
+</div>
+</div>
+
+## Additional Information [#additional-information]
+
+### Already Replaced Disk
+
+<Callout>
+  If you are replacing physical disks, additional steps are required
+</Callout>
+
+<div className="fd-steps">
+<div className="fd-step">
+  VMware recommends the node is placed into Maintenance Mode as detailed in the Resolution section step 2, before triggering a power off or performing any host maintenance vSAN disks are hot swappable in the following circumstances:
+
+1. Hybrid configuration and the controller supports hot swapping disks
+2. All flash, Deduplication and Compression is disabled, and the controller supports hot swapping disks
+
+If you're unsure if the controller supports hot swapping of disks or Deduplication and Compression is enabled then treat it as it's not supported and put the node into Maintenance Mode with Ensure Accessibility, power off the node and replace the disk
+
+**Note**: Disk groups with Deduplication and Compression enabled or replacing a failed cache tier disk requires the deletion of the disk group prior to replacing the failed disk. Follow the steps in the above Resolution section to replace the failed disk. If you can hot swap the failed disk be sure to run a rescan of the HBA so the new disk is detected and presented to ESXi for use
+
+</div>
+
+<div className="fd-step">
+  Log in to the node via SSH as root and run the below command to rescan all
+  HBAs:
+
+```bash
+esxcli storage core adapter rescan --all
+```
+
+</div>
+
+<div className="fd-step">
+  Verify that all disks are presented through the controller by running this
+  command: 
+  
+  ```bash
+  vdq -iq | less 
+  ```
+
+Lists all the disks naa.xxxxx and tags for the SSD disk and capacity disk.
+
+</div>
+
+<div className="fd-step">
+Tag the appropriate disk as a new capacity disk by running this command:
+
+```bash
+esxcli vsan storage tag add -d naa.xxxxxx -t capacityFlash
+```
+
+**Note**: This is only required for All Flash environments.
+
+</div>
+
+<div className="fd-step">
+Tag the SSD disk as Cache disk by running this command.
+
+```bash
+esxcli vsan storage tag add -s t10.NVMe____INTEL_SSDPEDMD800G4_____
+```
+
+**Note**: Make a note of exact name from the vdq -iq command output
+
+</div>
+
+<div className="fd-step">
+Remove the failed disk from the disk group:
+
+```bash
+esxcli vsan storage remove -d naa.xxxxxxx
+```
+
+</div>
+
+<div className="fd-step">
+To add the new capacity tier disk run
+
+```bash
+esxcli vsan storage add -s naa.xxxxxx -d naa.xxxxxxx
+```
+
+**Note**: The -s switch is only required in the add command if multiple disk groups are present to distinguish which disk group to add the capacity tier disk to. You can also use more than one -d for multiple capacity tier disks to be added to the disk group.
+
+</div>
+</div>
+
+### Remove Command Fails
+
+<Callout>
+  If the disk group remove command fails and a reboot is not wanted for any
+  reason here is a workaround
+</Callout>
+
+<div className="fd-steps">
+<div className="fd-step">Unplug the cache physically from the host.</div>
+
+<div className="fd-step">
+  `vdq -iH` to get disk group mappings and copy the cache uuid.
+</div>
+
+<div className="fd-step">
+Run the following command.
+
+```bash
+esxcli vsan storage remove -u <cache disk uuid>
+```
+
+</div>
+
+<div className="fd-step">
+Plug the cache disk back in. Disk group might re-appear now due to metadata on the cache drive. Simply run the remove command against it again and this time it should be successful. 
+</div>
+</div>
+
+### Mount or Unmount a Disk
+
+<Callout>
+  If needing to mount/unmount a disk group follow these commands
+</Callout>
+
+```bash
+esxcli vsan storage diskgroup mount -s <cache naa.xxxx>
+esxcli vsan storage diskgroup mount -u <cache disk uuid>
+
+esxcli vsan storage diskgroup unmount -s <cache naa.xxxx>
+esxcli vsan storage diskgroup unmount -u <cache disk uuid>
+```

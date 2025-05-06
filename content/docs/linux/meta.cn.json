@@ -1,0 +1,18 @@
+{
+  "title": "Linux",
+  "description": "Underpins the craft of SRE.",
+  "root": true,
+  "icon": "linux",
+  "pages": [
+    "---介绍---",
+    "index",
+    "---RHCSA---",
+    "about-rhcsa",
+    "command-line",
+    "manage-files",
+    "---RHCE---",
+    "about-rhce",
+    "---RHCA---",
+    "about-rhca"
+  ]
+}

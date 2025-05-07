@@ -1,0 +1,292 @@
+---
+title: 使用 esxcli 命令
+description: 有时在磁盘故障事件或其他硬件事件期间，需要命令行来移除/重建/挂载/卸载磁盘组。本文档将指导如何通过命令行与 vSAN 磁盘组交互
+---
+
+## 问题/介绍
+
+有时在磁盘故障事件或其他硬件事件期间，需要命令行来移除/重建/挂载/卸载磁盘组。本文档将指导如何通过命令行与 vSAN 磁盘组交互
+
+## 环境
+
+- VMware vSAN 6.x
+- VMware vSAN 7.x
+- VMware vSAN 8.x
+
+## 解决方案
+
+<Callout>
+  在执行以下操作计划之前，我们需要检查ESXi主机日志，以确认故障驱动器上报告的故障。如果vSAN已经将设备识别为故障或标记为离线，我们可以继续执行以下步骤。
+</Callout>
+
+如果发现不是硬件问题，我们需要检查有故障驱动器的驱动程序和固件。
+
+**在启用了重复数据删除和压缩功能的受影响磁盘组的情况下：**
+
+- 缓存磁盘故障 --> 整个磁盘组将停机
+- 容量磁盘故障 --> 整个磁盘组将停机
+
+**在未启用重复数据删除和压缩功能的情况下：**
+
+- 缓存磁盘故障 --> 整个磁盘组将停机
+- 容量磁盘故障 --> 只有故障磁盘将停机
+
+**使用 esxcli 命令移除和重建磁盘组：**
+
+<Callout title="注意" type="error">
+  如果不仔细遵循，这些步骤可能会导致数据破坏。
+</Callout>
+
+<div className="fd-steps">
+  <div className="fd-step">
+    使用 SSH 以 root 用户身份登录拥有磁盘组的 ESXi 主机。
+  </div>
+
+  <div className="fd-step">
+    运行以下命令之一将主机置于维护模式。有3个选项：
+
+<Callout title="注意" type="error">
+  VMware建议使用 **ensureObjectAccessibility** 选项。如果不使用
+  **ensureObjectAccessibility** 模式或 **evacuateAllData**
+  模式，可能会导致数据丢失。
+</Callout>
+
+    - **推荐**：
+      - 确保数据可访问性：
+        ```bash
+        esxcli system maintenanceMode set --enable true -m ensureObjectAccessibility
+        ```
+      - 撤离数据：
+        ```bash
+        esxcli system maintenanceMode set --enable true -m evacuateAllData
+        ```
+    - **不推荐**：
+      - 除非 VMware 支持推荐或在处理磁盘故障场景时。对于故障磁盘，无法使用确保可访问性或完全数据迁移。
+      - 不撤离数据：
+        ```bash
+        esxcli system maintenanceMode set --enable true -m noAction
+        ```
+
+  </div>
+
+  <div className="fd-step">
+    通过运行以下命令记录现有组中的缓存和容量磁盘 UUID:
+
+    ```bash
+    [root@VMware:~] esxcli vsan storage list
+    Example output of a capacity tier device:
+    naa.123456XXXXXXXXXXX:
+    Device: naa.123456XXXXXXXXXXX
+    Display Name: naa.123456XXXXXXXXXXX
+    Is SSD: true
+    VSAN UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxx8fa3
+    VSAN Disk Group UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxd008e
+    VSAN Disk Group Name: naa.50000XXXXX1245
+    Used by this host: true
+    In CMMDS: true
+    On-disk format version: 5
+    Deduplication: true
+    Compression: true
+    Checksum: 5356031598619392290
+    Checksum OK: true
+    Is Capacity Tier: true
+    Encryption: false
+    DiskKeyLoaded: false
+    ```
+
+**注意**: 对于缓存磁盘：
+
+- The VSAN UUID and VSAN Disk Group UUID fields will match
+- Output will report: **Is Capacity Tier: false**
+
+</div>
+
+<div className="fd-step">
+    然后移除磁盘组
+
+    ```bash
+    esxcli vsan storage remove -u <VSAN Disk Group UUID>
+    ```
+
+**注意**: 始终使用以下命令再次检查磁盘组 UUID:
+
+    ```bash
+    esxcli vsan storage list
+    ```
+
+    **注意: 如果仅从现有磁盘组中移除单个缺失的容量磁盘，且已关闭Dedup，请在要移除的磁盘上使用`-d`（如果缺失则使用`-u`）：**
+
+    ```bash
+    esxcli vsan storage remove -d <naa.xxxxxxx>
+    ```
+
+    ```bash
+    esxcli vsan storage remove -u <UUID of the absent capacity disk to remove>
+    ```
+
+如果命令失败，请尝试重启主机并再次尝试。
+
+**注意**: 如果命令失败且出于任何原因想避免重启，请参阅本文档的“其他信息”部分了解可能的解决方法。
+
+  </div>
+
+<div className="fd-step">
+  如果您已替换物理磁盘，请参阅[其他信息](#additional-information)部分。
+</div>
+
+<div className="fd-step">
+  对于全闪存 vSAN，适当标记容量磁盘：
+
+1.
+
+```bash
+esxcli vsan storage tag add -d <device id> -t capacityFlash
+```
+
+2. 为所有容量磁盘重复此操作
+
+</div>
+
+<div className="fd-step">
+  使用此命令创建磁盘组：
+
+```bash
+esxcli vsan storage add -s naa.xxxxxx -d naa.xxxxxxx -d naa.xxxxxxxxxx -d naa.xxxxxxxxxxxx
+```
+
+**注意**: 如果只添加一个容量磁盘到已关闭 Dedup 的现有磁盘组，请对现有磁盘组的缓存使用`-s`，然后对要添加的磁盘使用`-d`：
+
+```bash
+esxcli vsan storage add -s naa.xxxxxx -d naa.xxxxxxx
+```
+
+其中 `naa.xxxxxx` 是磁盘设备的 NAA ID，磁盘设备根据以下选项识别：
+
+- -s 表示缓存磁盘。
+- -d 表示容量磁盘。
+
+</div>
+
+<div className="fd-step">
+  运行`esxcli vsan storage list`命令查看新磁盘组，并验证所有磁盘在 "In CMMDS:" 字段输出中报告 True。
+</div>
+</div>
+
+## 其他信息 [#additional-information]
+
+### 已替换的磁盘
+
+<Callout>如果您正在替换物理磁盘，需要额外的步骤</Callout>
+
+<div className="fd-steps">
+<div className="fd-step">
+  VMware 建议在触发关机或执行任何主机维护之前，按照解决方案部分步骤2中的详细说明将节点置于维护模式。vSAN 磁盘在以下情况下可热插拔：
+
+1. 混合配置且控制器支持磁盘热插拔
+2. 全闪存，已禁用重复数据删除和压缩，且控制器支持磁盘热插拔
+
+如果您不确定控制器是否支持磁盘热插拔或是否启用了重复数据删除和压缩，则将其视为不支持，并将节点置于具有确保可访问性的维护模式下，关闭节点并更换磁盘
+
+**注意**：启用了重复数据删除和压缩的磁盘组或替换故障缓存层磁盘需要在替换故障磁盘之前删除磁盘组。按照上面解决方案部分中的步骤替换故障磁盘。如果您可以热插拔故障磁盘，请确保运行 HBA 重新扫描，以便检测到新磁盘并将其呈现给 ESXi 使用
+
+</div>
+
+<div className="fd-step">
+  以 root 身份通过 SSH 登录节点，并运行以下命令重新扫描所有 HBA：
+
+```bash
+esxcli storage core adapter rescan --all
+```
+
+</div>
+
+<div className="fd-step">
+  通过运行此命令验证所有磁盘是否通过控制器呈现： 
+  
+  ```bash
+  vdq -iq | less 
+  ```
+
+列出所有磁盘 `naa.xxxxx` 及用于 SSD 磁盘和容量磁盘的标签。
+
+</div>
+
+<div className="fd-step">
+通过运行此命令将相应的磁盘标记为新容量磁盘：
+
+```bash
+esxcli vsan storage tag add -d naa.xxxxxx -t capacityFlash
+```
+
+**注意**: 这只在全闪存环境中需要。
+
+</div>
+
+<div className="fd-step">
+通过运行此命令将 SSD 磁盘标记为缓存磁盘。
+
+```bash
+esxcli vsan storage tag add -s t10.NVMe____INTEL_SSDPEDMD800G4_____
+```
+
+**注意**: 记下从 `vdq -iq` 命令输出的确切名称
+
+</div>
+
+<div className="fd-step">
+从磁盘组中移除故障磁盘：
+
+```bash
+esxcli vsan storage remove -d naa.xxxxxxx
+```
+
+</div>
+
+<div className="fd-step">
+运行以下命令添加新的容量层磁盘
+
+```bash
+esxcli vsan storage add -s naa.xxxxxx -d naa.xxxxxxx
+```
+
+**注意**: 如果存在多个磁盘组，则在 add 命令中需要 `-s` 开关来区分将容量层磁盘添加到哪个磁盘组。您还可以使用多个 `-d` 将多个容量层磁盘添加到磁盘组。
+
+</div>
+</div>
+
+### 移除命令失败
+
+<Callout>
+  如果磁盘组移除命令失败，且出于任何原因不想重启，这里提供了一个解决方法
+</Callout>
+
+<div className="fd-steps">
+<div className="fd-step">物理上从主机拔出缓存磁盘。</div>
+
+<div className="fd-step">运行 `vdq -iH` 来获取磁盘组映射并复制缓存 uuid。</div>
+
+<div className="fd-step">
+运行以下命令。
+
+```bash
+esxcli vsan storage remove -u <cache disk uuid>
+```
+
+</div>
+
+<div className="fd-step">
+将缓存磁盘重新插入。由于缓存驱动器上的元数据，磁盘组现在可能会重新出现。只需再次对其运行移除命令，这次应该会成功。
+</div>
+</div>
+
+### 挂载或卸载磁盘
+
+<Callout>如果需要挂载/卸载磁盘组，请按照这些命令操作</Callout>
+
+```bash
+esxcli vsan storage diskgroup mount -s <cache naa.xxxx>
+esxcli vsan storage diskgroup mount -u <cache disk uuid>
+
+esxcli vsan storage diskgroup unmount -s <cache naa.xxxx>
+esxcli vsan storage diskgroup unmount -u <cache disk uuid>
+```

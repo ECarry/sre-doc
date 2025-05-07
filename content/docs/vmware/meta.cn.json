@@ -4,9 +4,9 @@
   "root": true,
   "icon": "vmware",
   "pages": [
-    "---Introduction---",
+    "---介绍---",
     "index",
-    "---Resolution---",
+    "---解决方案---",
     "resolution-index",
     "manage-vsan-disk"
   ]

@@ -6,8 +6,14 @@
   "pages": [
     "---Introduction---",
     "index",
+    "---Setup---",
+    "setup-index",
+    "(installation)",
     "---Resolution---",
     "resolution-index",
-    "manage-vsan-disk"
+    "---Troubleshooting---",
+    "troubleshooting-index",
+    "manage-vsan-disk",
+    "manage-certificate"
   ]
 }

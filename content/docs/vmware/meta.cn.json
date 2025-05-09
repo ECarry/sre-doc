@@ -4,10 +4,16 @@
   "root": true,
   "icon": "vmware",
   "pages": [
-    "---介绍---",
+    "---Introduction---",
     "index",
-    "---解决方案---",
+    "---Setup---",
+    "setup-index",
+    "(installation)",
+    "---Resolution---",
     "resolution-index",
-    "manage-vsan-disk"
+    "---Troubleshooting---",
+    "troubleshooting-index",
+    "manage-vsan-disk",
+    "manage-certificate"
   ]
 }

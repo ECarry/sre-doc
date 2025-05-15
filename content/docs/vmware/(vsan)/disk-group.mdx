@@ -1,0 +1,29 @@
+---
+title: Disk Groups
+description: Understanding vSAN Architecture - Disk Groups
+---
+
+## vSAN Architecture Overview
+
+vSAN architecture consists of two tiers: a cache tier for the purpose of read caching and write buffering, and a capacity tier for persistent storage. This two tier design offers supreme performance to VMs while ensuring that devices can have data written to them in the most efficient way possible. vSAN uses a logical construct called disk groups to manage the relationship between capacity devices and their cache tier.
+
+![DiskGroup](https://sre.ecarry.uk/2025/05/15/diskgroup.webp)
+
+A few things to understand about disk groups:
+
+- Each host that contributes storage in a vSAN cluster will contain at least 1 disk group.
+- Disk groups contain at most 1 cache device and between 1 to 7 capacity devices.
+- At most a vSAN host can have 5 disk groups, each containing up to 7 capacity devices, resulting in a maximum of 35 capacity devices for each host.
+- Whether hybrid or all-flash configuration, the cache device must be a flash device.
+- In a hybrid configuration, the cache device is utilized by vSAN as both a read cache (70%) and a write buffer (30%).
+- In an all-flash configuration, 100% of the cache device is dedicated as a write buffer.
+
+## Cache Tier
+
+### Read Cache
+
+### Write Cache
+
+## Destaging Writes to the Capacity Tier
+
+## Disk Group Design

@@ -3,6 +3,11 @@ title: Disk Groups
 description: Understanding vSAN Architecture - Disk Groups
 ---
 
+<Callout title="via">
+  [Understanding vSAN Architecture: Disk
+  Groups](https://blogs.vmware.com/virtualblocks/2019/04/18/vsan-disk-groups/)
+</Callout>
+
 ## vSAN Architecture Overview
 
 vSAN architecture consists of two tiers: a cache tier for the purpose of read caching and write buffering, and a capacity tier for persistent storage. This two tier design offers supreme performance to VMs while ensuring that devices can have data written to them in the most efficient way possible. vSAN uses a logical construct called disk groups to manage the relationship between capacity devices and their cache tier.
@@ -20,10 +25,83 @@ A few things to understand about disk groups:
 
 ## Cache Tier
 
+As mentioned the capacity tier has slightly different roles for hybrid and all-flash configurations. In hybrid configurations, the cache device acts as a read cache and write buffer. This dramatically improves the performance of the I/O while allowing for scale-out based on low-cost SATA or SAS disk drives. In all-flash since the capacity disks are also flash, there is no need to move blocks between flash devices. For this reason, vSAN dedicates 100% of the device to write buffering.
+
 ### Read Cache
+
+In a **hybrid configuration**, 70% of the cache device is dedicated to storing commonly used blocks. This reduces the I/O read latency incurred by slower disks. The goal of vSAN is to have a 90% cache hit rate. A cache hit is when a read request is found on the read cache. Subsequently, a cache miss is when the block needs to be retrieved from the capacity tier. Since the capacity tier is using magnetic disks the read operation will incur latency.
+
+In an **all-flash configuration**, 100% of the cache device is dedicated to write buffering. So where do the reads go? If the requested block is still hot and has not been destaged it will be read from the cache tier. Otherwise, it is read from the capacity tier. Since the all-flash capacity devices can effectively handle reads, it’s not necessary to have a dedicated read cache. This frees up more space on the cache device for write buffering.
 
 ### Write Cache
 
+In both hybrid and all-flash configurations, the write cache acts a write-back buffer. Writes are acknowledged directly from the cache tier without having to be destaged to the capacity tier before they are acknowledged.
+
+In a **hybrid configuration**, 30% of the cache tier is dedicated to write buffering. Using flash devices significantly reduces the latency for write operations compared to magnetic disks.
+
+In an **all-flash configuration**, 100% of the cache device is dedicated to write-buffering (up to a maximum of 600 GB). vSAN still utilizes the entire disk regardless of size, spreading the writes to every block on the device. This reduces the wear of the cells, ultimately increasing the life-span of the device.
+
+It is recommended to use a high specification flash device for your cache device. Since the cache device is write intensive, the higher the class the more reliable and longer life of the drive. The image below shows the various endurance classes for vSAN. Take notice of the TBW (terabytes written). When choosing a cache device, the higher TBW the longer the life of the device.
+
+![tbw](https://sre.ecarry.uk/2025/05/16/tbw.webp)
+
+Be sure to check the [VMware Compatibility Guide](https://compatibilityguide.broadcom.com/) for a list of supported PCIe flash devices, SSDs and NVMe devices.
+
 ## Destaging Writes to the Capacity Tier
 
+vSAN has several algorithms to determine when to flush the write buffer. As you might imagine, since the role and design of the cache tier is different for hybrid and all-flash configurations, the algorithms vary. vSAN uses self-tuning proximal mechanisms to consider several parameters (capacity, proximity, rate of incoming I/O, queues, disk utilization and optimal batching). This determines how often writes are destaged to the capacity tier.
+
 ## Disk Group Design
+
+As previously mentioned each host contributing storage to a vSAN cluster requires a minimum of 1 disk group. There are a few reasons to consider using multiple disk groups. Let’s examine a few of the most common using the following example.
+
+- **Design 1**: 1 Disk Group with 1 cache device and 6 capacity devices
+- **Design 2**: 2 Disk Groups with 1 cache device and 3 capacity devices
+
+![Design1-2](https://sre.ecarry.uk/2025/05/16/design12.webp)
+
+### Availability
+
+Considering design 1 above, what happens if my cache device fails? Do my VMs go offline? Have I lost data? Not at all. Unless you changed the default policy to RAID0, the default storage policy is RAID1 FTT=1, which means you can tolerate 1 failed device. Sure your disk group will go offline but there is an additional copy of the data on those devices in a separate failure domain. Configuring additional disk groups is not a way to ensure availability. Desired availability is determined using Storage Policy Based Management (SPBM). Until the failed device is replaced (and the disk group rebuilt) the objects on the 6 capacity devices are still offline and impacted even though the VM is uninterrupted because it is using the additional copy.
+
+Design 2 reduces the failure domain because now a failed cache device only impacts the associated 3 capacity devices instead of 6. It also reduces the time to rebuild these impacted objects.
+
+If vSAN identifies a failed disk it will label it as “degraded” and immediately start rebuilding to return the objects to compliance. I recently had a few customers under the impression that [vSAN waits 60 minutes before rebuilding](https://blogs.vmware.com/virtualblocks/2017/11/09/understanding-vsan-rebuilds/). Honest mistake: If vSAN identifies a device as “absent” (i.e. host reboot, network outage) it makes the assumption that the outage is temporary and will wait 60 minutes to avoid any unnecessary rebuilds. When a disk is failed or has errors, vSAN rebuilds immediately to ensure the level of resiliency configured in the storage policy.
+
+It’s worth mentioning that vSAN 6.7 has significantly enhanced the way background I/O operations (like rebuild) are handled ensuring applications receive the necessary I/O in times of contention.
+
+### Performance
+
+Considering the same example above, creating 2 disk groups containing 1 cache device and 3 devices is advantageous from a performance perspective as well. Testing has revealed that moving disk groups to separate storage controllers can significantly boost the performance of a vSAN environment.
+
+## A Closer look at vSAN I/O
+
+Understanding how vSAN handles reads and writes is important when designing a vSAN Architecture. The following is a brief overview of each operation. For a detailed explanation of this and all vSAN topics, be sure to read the vSAN 6.7 U1 Deep Dive.
+
+![70-30](https://sre.ecarry.uk/2025/05/16/7030.webp)
+
+### Reads
+
+In both hybrid and all-flash configurations vSAN checks to see if the requested block is still hot in the cache tier. If so, this is called a cache hit. vSAN handles cache misses differently for hybrid and all-flash.
+
+As mentioned, in a **hybrid configuration** if the block is present, the read is serviced from the read cache. If a read miss occurs, vSAN will retrieve the data from the capacity tier and serve it up to the requesting application. vSAN also has a read ahead cache optimization where 1 MB of data around the data block being read is also brought into the cache. The assumption here is that next read will likely be local to the last read and will now also be cached.
+
+In an **all-flash configuration**, there is no read cache. If a requested block is in the write buffer, the request will be served from there. If not, vSAN will read the data from the capacity tier. Since the capacity tier is all-flash the impact is minimal. By not implementing a read cache on all-flash configurations the cache tier can handle more writes, boosting overall performance.
+
+### Writes
+
+In both hybrid and all-flash configurations, the write cache acts as a write-back buffer. When an application issues a write operation, the write is sent to appropriate ESXi host cache based on the storage policy (i.e. Failures to tolerate, stripes, RAID, etc).
+
+In a **hybrid configuration**, 30% of the cache tier is dedicated to write buffering. Writes in the buffer are acknowledged back to the VM without having to be moved to the capacity tier first.
+
+In an **all-flash configuration**, 100% of the cache device is dedicated to write-buffering (up to a maximum of 600 GB). vSAN still utilizes the entire disk regardless of size spreading the writes to every block on the device. This reduces the wear of the cells on the flash device, ultimately increasing the life-span.
+
+## In Conclusion
+
+Standing up a vSAN is cluster is a relatively simple task, but there are several considerations that may vary by organization. Consider the following for your vSAN design:
+
+- Using multiple disk groups per host can improve storage performance significantly while limiting the size of a failure domain; reducing the amount of data impacted by physical device failure.
+- Failed devices will rebuild immediately. Unless there is a reason to change it, the object repair timer should remain at 60 minutes.
+- Place a high endurance flash device in the cache tier to handle the most amounts of I/O. This allows the capacity tier to use a lower specification flash device.
+- Using separate storage controllers for each disk group can significantly boost the performance of a vSAN environment.
+- Check the [VMware Compatibility Guide](https://compatibilityguide.broadcom.com/) for a list of supported PCIe flash devices, SSDs and NVMe devices.

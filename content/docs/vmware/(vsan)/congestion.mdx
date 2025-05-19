@@ -1,0 +1,45 @@
+---
+title: Congestion
+description: Understanding Congestion in vSAN
+---
+
+<Callout title="via">
+  [Understanding Congestion in
+  vSAN](https://knowledge.broadcom.com/external/article/326479/understanding-congestion-in-vsan.html)
+</Callout>
+
+## Issue/Introduction
+
+This article explains and provides details for vSAN Congestion.
+
+## Resolution
+
+Congestion is a flow control mechanism used by vSAN. Whenever there is a bottleneck in a lower layer of vSAN (closer to the physical storage devices), vSAN uses this flow control (aka congestion) mechanism to relieve the bottleneck in the lower layer and instead reduce the rate of incoming I/O at the vSAN ingress, (i.e. vSAN Client VMs). This reduction of the incoming rate is done by introducing an I/O delay at the ingress that is equivalent to the delay the I/O would have occurred due to the bottleneck at the lower layer. Thus, it is an effective way to shift latency from the lower layers to the ingress without changing the overall throughput of the system. vSAN measures congestion as a scalar value between 0 to 255, and the introduced delay is computed using a randomized exponential backoff method, based on the congestion metric.
+
+Congestion is bubbled through the stack to allow upper layers to perform ingress throttling and is observable across the stack. Congestion observed in upper layers is aggregated from lower layer congestion.
+
+The following kinds of congestion originate from lower layer sources directly. They are specific to each vSAN disk-group (LSOM). vSAN Performance Service monitors these kinds of congestion and presents corresponding metrics in the vSAN Disk Group graphs. Generally, VMware technicians are required to do the further analysis for these metrics.
+
+- **Slab Congestion**: This originates in vSAN internal operation slabs. It occurs when the number of inflight operations exceed the capacity of operation slabs.
+
+- **Comp Congestion**: This occurs when the size of an internal table used for vSAN object components is exceeding threshold.
+
+- **SSD Congestion**: This occurs when the cache tier disk write buffer space runs out.
+
+- **Log Congestion**: This occurs when vSAN internal log space usage in cache tier disk runs out.
+
+- **Mem Congestion**: This occurs when the size of used memory heap by vSAN internal components exceed the threshold.
+
+- **IOPS Congestion**: IOPS reservations/limits can be applied to vSAN object components. If component IOPS exceed reservations and disk IOPS utilization is 100%, the congestion is raised for those excessive I/Os.
+
+Each of these congestion types is associated with a resource that can be reclaimed at a given rate.
+
+For example:
+
+The drain rate of SSD congestion matches the rate at which LSOM de-stages I/O to the capacity tier drives. Congestion should cause the top-level (client) aggregate bandwidth to drop to match the drain rate of the contended resource.
+
+The following kinds of congestion can be observed in the upper layers of the vSAN I/O operation stack. vSAN Performance Service monitors these kinds of congestion and present corresponding metrics in vSAN VM Consumption and vSAN Backend graphs. These kinds of congestion are aggregated from lower layer congestion, but not from the congestion sources directly.
+
+- **Congestion in vSAN Clients (DOM Clients)**: This is for throttling the incoming I/O at vSAN Clients (VM Consumption) layer. Lower layer congestion can be the reason for congestion in vSAN Clients.
+
+- **Congestion in vSAN backend (DOM Component Manager)**: This is for throttling the incoming I/O at vSAN Backend layer. Lower layer congestion can be the reason for congestion in vSAN backend.

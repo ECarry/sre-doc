@@ -1,0 +1,45 @@
+---
+title: Congestion
+description: Understanding Congestion in vSAN
+---
+
+<Callout title="via">
+  [Understanding Congestion in
+  vSAN](https://knowledge.broadcom.com/external/article/326479/understanding-congestion-in-vsan.html)
+</Callout>
+
+## Issue/Introduction
+
+本文阐述并提供有关 vSAN 拥堵的详细信息。
+
+## Resolution
+
+拥堵是 vSAN 采用的一种流量控制机制。当 vSAN 底层（靠近物理存储设备）出现瓶颈时，vSAN 会利用这种流量控制（即拥堵）机制来缓解底层瓶颈，转而降低 vSAN 入口端（即 vSAN 客户端虚拟机）的 I/O 输入速率。通过在入口端引入与底层瓶颈导致的延迟相当的 I/O 延迟来实现输入速率的降低。因此，这是一种在不改变系统整体吞吐量的前提下，将延迟从底层转移到入口端的有效方法。vSAN 将拥堵量化为 0 到 255 之间的标量值，并根据该拥堵指标，采用随机化指数退避算法计算引入的延迟时间。
+
+拥堵信号会通过协议栈向上传递，使得上层能够实施入口限流，并且在整个协议栈中均可观测到。上层观测到的拥堵是底层拥堵的聚合结果。
+
+以下类型的拥堵直接源自底层资源，它们特定于每个 vSAN 磁盘组（LSOM）。vSAN 性能服务会监控这些拥堵类型，并在 vSAN 磁盘组图表中展示相应的指标。通常需要 VMware 技术人员对这些指标进行进一步分析。
+
+- **Slab Congestion**: 这源自 vSAN 内部操作 Slab。当进行中的操作数量超过操作 Slab 的容量时，就会发生这种情况。
+
+- **Comp Congestion**: 当用于 vSAN 对象组件的内部表大小超过阈值时，就会发生这种情况。
+
+- **SSD Congestion**: 当缓存层磁盘写入缓存层空间耗尽时，就会发生这种情况。
+
+- **Log Congestion**: 当 vSAN 内部日志空间在缓存层磁盘中的使用耗尽时发生。
+
+- **Mem Congestion**: 当 vSAN 内部组件使用的内存堆大小超过阈值时发生。
+
+- **IOPS Congestion**: 可以对 vSAN 对象组件应用 IOPS 预留/限制。如果组件 IOPS 超过预留值且磁盘 IOPS 利用率达到 100%，则会对这些超额 I/O 引发拥堵。
+
+每种拥堵类型都与一种可按给定速率回收的资源相关联。
+
+例如：
+
+SSD 拥堵的排空速率与 LSOM 将 I/O 下刷至容量层驱动器的速率相匹配。拥堵应导致顶层（客户端）聚合带宽下降，以匹配竞争资源的排空速率。
+
+在 vSAN I/O 操作栈的上层可观察到以下类型的拥堵。vSAN 性能服务会监控这些拥堵类型，并在 vSAN 虚拟机消耗和 vSAN 后端图表中呈现相应指标。这些拥堵类型由底层拥堵聚合而来，但并非直接源自拥堵源头。
+
+- **Congestion in vSAN Clients (DOM Clients)**: 用于在 vSAN 客户端（虚拟机消耗）层对传入 I/O 进行限流。底层拥堵可能是导致 vSAN 客户端拥堵的原因。
+
+- **Congestion in vSAN backend (DOM Component Manager)**: 用于在 vSAN 后端层对传入的 I/O 进行节流。底层拥堵可能是导致 vSAN 后端拥堵的原因。

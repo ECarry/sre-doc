@@ -1,4 +1,44 @@
 ---
 title: Overview
-description: vSAN index
+description: vSAN Concepts
 ---
+
+## What is vSAN?
+
+VMware vSAN is a distributed layer of software that runs natively as a part of the ESXi hypervisor.
+
+vSAN aggregates local or direct-attached capacity devices of a host cluster and creates a single storage pool shared
+across all hosts in the vSAN cluster. While supporting VMware features that require shared storage, such as HA, vMotion,
+and DRS, vSAN eliminates the need for external shared storage and simplifies storage configuration and virtual machine
+provisioning activities.
+
+## vSAN Concepts
+
+VMware vSAN uses a software-defined approach that creates shared storage for virtual machines.
+
+It virtualizes the local physical storage resources of ESXi hosts and turns them into pools of storage that can be
+divided and assigned to virtual machines and applications according to their quality-of-service requirements. vSAN is
+implemented directly in the ESXi hypervisor.
+
+You can configure vSAN to work as either a hybrid or all-flash cluster. In hybrid clusters, flash devices are used for the
+cache layer and magnetic disks are used for the storage capacity layer. In all-flash clusters, flash devices are used for
+both cache and capacity.
+
+You can activate vSAN on existing host clusters, or when you create a new cluster. vSAN aggregates all local capacity
+devices into a single datastore shared by all hosts in the vSAN cluster. You can expand the datastore by adding capacity
+devices or hosts with capacity devices to the cluster. vSAN works best when all ESXi hosts in the cluster share similar or
+identical configurations across all cluster members, including similar or identical storage configurations. This consistent
+configuration balances virtual machine storage components across all devices and hosts in the cluster. Hosts without any
+local devices also can participate and run their virtual machines on the vSAN datastore.
+
+In vSAN Original Storage Architecture (OSA), each host that contributes storage devices to the vSAN datastore must
+provide at least one device for flash cache and at least one device for capacity. The devices on the contributing host
+form one or more disk groups. Each disk group contains one flash cache device, and one or multiple capacity devices for
+persistent storage. Each host can be configured to use multiple disk groups.
+
+In vSAN Express Storage Architecture (ESA), all storage devices claimed by vSAN contribute to capacity and
+performance. Each host's storage devices claimed by vSAN form a storage pool. The storage pool represents the amount
+of caching and capacity provided by the host to the vSAN datastore.
+
+For best practices, capacity considerations, and general recommendations about designing and sizing a vSAN cluster,
+see the VMware vSAN Design and Sizing Guide.

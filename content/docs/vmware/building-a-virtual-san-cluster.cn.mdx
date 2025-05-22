@@ -1,0 +1,46 @@
+---
+title: Installation
+description: vSAN 部署选项
+---
+
+## 构建 vSAN 集群
+
+创建 vSAN 集群时，可以选择存储架构和部署选项。选择最适合您的资源和需求的 vSAN 存储架构。
+
+## vSAN 存储架构
+
+vSAN 提供两种存储架构：vSAN Original Storage Architecture (OSA) 和 vSAN Express Storage Architecture (ESA)。
+
+### vSAN Original Storage Architecture (OSA)
+
+vSAN Original Storage Architecture (OSA) 专为各种存储设备而设计，包括闪存固态驱动器 (SSD) 和磁盘驱动器 (HDD)。提供存储的每个主机都包含一个或多个磁盘组。每个磁盘组包含一个闪存缓存设备和一个或多个容量设备。
+
+![OSA](https://sre.ecarry.uk/osa.jpeg)
+
+### vSAN Express Storage Architecture (ESA)
+
+vSAN Express Storage Architecture (ESA) 专为基于高性能 NVMe 的 TLC 闪存设备和高性能网络而设计。提供存储的每个主机都包含一个由一个或更多闪存设备组成的存储池。每个闪存设备都会为集群提供缓存和容量。
+
+![ESA](https://sre.ecarry.uk/esa.webp)
+
+## vSAN 部署选项
+
+vSAN 提供了多种部署选项，包括单站点 vSAN 集群、双节点 vSAN 集群和 vSAN 延伸集群。
+
+### 单站点 vSAN 集群
+
+单站点 vSAN 集群至少包含三个主机。通常情况下，单站点 vSAN 集群中的所有主机都位于单个站点上，并在相同的第 2 层网络上相连接。全闪存配置需要 10 Gb 网络连接，vSAN Express Storage Architecture 需要 10 Gb 网络连接。
+
+![SingleSite](https://sre.ecarry.uk/singlesite.webp)
+
+### 双节点 vSAN 集群
+
+双节点 vSAN 集群通常用于远程办公室/分支机构环境，通常运行需要高可用性的少量工作负载。双节点 vSAN 集群中包含的两个主机位于同一位置，且连接到同一网络交换机或直接连接。配置双节点 vSAN 集群时可以将第三个主机用作见证主机，该见证主机可以位于分支机构的远程位置。通常情况下，见证主机与 vCenter Server 一起位于主站点。
+
+![MultiSite](https://sre.ecarry.uk/multisite.png)
+
+### vSAN 延伸集群
+
+vSAN 延伸集群可应对整个站点故障。vSAN 延伸集群中的主机均匀分布在两个站点上。两个站点的网络延迟不得超过 5 毫秒。vSAN 见证主机位于第三个站点上，可提供见证功能。在两个数据站点之间出现网络分区的情况下，见证主机还充当仲裁主机。仅见证组件等元数据存储在见证主机上。
+
+![ExtendCluster](https://sre.ecarry.uk/extend.png)

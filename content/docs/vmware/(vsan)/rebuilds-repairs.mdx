@@ -17,3 +17,17 @@ VMware vSAN 是一种基于对象的分布式存储系统，它利用集群中�
 Each object consists of one or more components. The number of components that make up an object depends primarily on the size of the objects and the storage policy assigned to the object. The maximum size of a component is 255GB. If an object is larger than 255GB, it is split up into multiple components. For detailed information on vSAN Objects and Component placement go to [storagehub.vmware.com](https://storagehub.vmware.com).
 
 每个存储对象由一个或多个组件构成。组件数量主要取决于对象大小及其分配的存储策略，单个组件最大容量为 255GB。当对象超过 255GB 时，系统会将其拆分为多个组件。有关 vSAN 对象与组件布局的详细信息，请访问 [storagehub.vmware.com](https://storagehub.vmware.com)。
+
+The object in Figure 1 is a 700GB VMDK. A few observations:
+图 1 所示对象是一个 700GB 的 VMDK 虚拟磁盘，我们可以观察到：
+
+- Because the maximum size of components is 255GB it will take 3 components (C1, C2, C3) to make one full copy of the object.
+- 由于组件最大容量限制为 255GB，该对象需要拆分为 3 个组件（C1、C2、C3）才能构成完整副本。
+- The object has a VM storage policy of RAD-1 (mirror) and FTT=1. This policy requires two replicas of the object on separate hosts and a witness component acting as a tie-breaker.
+- 该对象分配了 RAD-1（镜像）和 FTT=1 的存储策略，这意味着需要在不同主机上创建两个副本，并且需要一个见证组件作为仲裁者。
+
+![](https://sre.ecarry.uk/sre-doc/2025/05/59e05e2f8198b6cb82b2b711dd856791.webp)
+Figure 1: vSAN Objects and Components
+图 1：vSAN 对象与组件
+
+## vSAN Object Component States

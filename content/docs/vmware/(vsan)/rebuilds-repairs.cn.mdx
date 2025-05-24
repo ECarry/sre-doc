@@ -1,0 +1,25 @@
+---
+title: 重建与修复机制
+description: 了解 vSAN 重建与修复机制
+---
+
+<Callout title="via">
+  [了解 vSAN
+  重建与修复机制](https://blogs.vmware.com/virtualblocks/2017/11/09/understanding-vsan-rebuilds/)
+</Callout>
+
+## vSAN 对象与组件布局
+
+VMware vSAN 是一种基于对象的分布式存储系统，它利用集群中每台 ESXi 主机上的物理存储设备共同构建 vSAN 存储系统。运行在 vSAN 存储上的虚拟机由多个存储对象组成，例如 VMDK 虚拟磁盘、虚拟机主命名空间、虚拟机交换分区、快照增量磁盘以及快照内存映射等都属于 vSAN 存储对象。
+
+每个存储对象由一个或多个组件构成。组件数量主要取决于对象大小及其分配的存储策略，单个组件最大容量为 255GB。当对象超过 255GB 时，系统会将其拆分为多个组件。有关 vSAN 对象与组件布局的详细信息，请访问 [storagehub.vmware.com](https://storagehub.vmware.com)。
+
+图 1 所示对象是一个 700GB 的 VMDK 虚拟磁盘，我们可以观察到：
+
+- 由于组件最大容量限制为 255GB，该对象需要拆分为 3 个组件（C1、C2、C3）才能构成完整副本。
+- 该对象分配了 RAD-1（镜像）和 FTT=1 的存储策略，这意味着需要在不同主机上创建两个副本，并且需要一个见证组件作为仲裁者。
+
+![](https://sre.ecarry.uk/sre-doc/2025/05/59e05e2f8198b6cb82b2b711dd856791.webp)
+图 1：vSAN 对象与组件
+
+## vSAN 对象组件状态

@@ -7,3 +7,13 @@ description: Understanding vSAN Rebuilds and Repairs
   [Understanding vSAN Rebuilds and
   Repairs](https://blogs.vmware.com/virtualblocks/2017/11/09/understanding-vsan-rebuilds/)
 </Callout>
+
+## vSAN Objects and Component Placement
+
+VMware vSAN is an object-based distributed storage system that uses physical storage devices on each ESXi host in a cluster to contribute to the vSAN storage system. Virtual machines that live on vSAN storage are comprised of a number of storage objects. VMDKs, VM home namespace, VM swap areas, snapshot delta disks, and snapshot memory maps are all examples of storage objects in vSAN.
+
+VMware vSAN 是一种基于对象的分布式存储系统，它利用集群中每台 ESXi 主机上的物理存储设备共同构建 vSAN 存储系统。运行在 vSAN 存储上的虚拟机由多个存储对象组成，例如 VMDK 虚拟磁盘、虚拟机主命名空间、虚拟机交换分区、快照增量磁盘以及快照内存映射等都属于 vSAN 存储对象。
+
+Each object consists of one or more components. The number of components that make up an object depends primarily on the size of the objects and the storage policy assigned to the object. The maximum size of a component is 255GB. If an object is larger than 255GB, it is split up into multiple components. For detailed information on vSAN Objects and Component placement go to [storagehub.vmware.com](https://storagehub.vmware.com).
+
+每个存储对象由一个或多个组件构成。组件数量主要取决于对象大小及其分配的存储策略，单个组件最大容量为 255GB。当对象超过 255GB 时，系统会将其拆分为多个组件。有关 vSAN 对象与组件布局的详细信息，请访问 [storagehub.vmware.com](https://storagehub.vmware.com)。

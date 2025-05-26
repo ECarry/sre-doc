@@ -12,22 +12,47 @@ description: Understanding vSAN Rebuilds and Repairs
 
 VMware vSAN is an object-based distributed storage system that uses physical storage devices on each ESXi host in a cluster to contribute to the vSAN storage system. Virtual machines that live on vSAN storage are comprised of a number of storage objects. VMDKs, VM home namespace, VM swap areas, snapshot delta disks, and snapshot memory maps are all examples of storage objects in vSAN.
 
-VMware vSAN 是一种基于对象的分布式存储系统，它利用集群中每台 ESXi 主机上的物理存储设备共同构建 vSAN 存储系统。运行在 vSAN 存储上的虚拟机由多个存储对象组成，例如 VMDK 虚拟磁盘、虚拟机主命名空间、虚拟机交换分区、快照增量磁盘以及快照内存映射等都属于 vSAN 存储对象。
-
 Each object consists of one or more components. The number of components that make up an object depends primarily on the size of the objects and the storage policy assigned to the object. The maximum size of a component is 255GB. If an object is larger than 255GB, it is split up into multiple components. For detailed information on vSAN Objects and Component placement go to [storagehub.vmware.com](https://storagehub.vmware.com).
 
-每个存储对象由一个或多个组件构成。组件数量主要取决于对象大小及其分配的存储策略，单个组件最大容量为 255GB。当对象超过 255GB 时，系统会将其拆分为多个组件。有关 vSAN 对象与组件布局的详细信息，请访问 [storagehub.vmware.com](https://storagehub.vmware.com)。
-
 The object in Figure 1 is a 700GB VMDK. A few observations:
-图 1 所示对象是一个 700GB 的 VMDK 虚拟磁盘，我们可以观察到：
 
 - Because the maximum size of components is 255GB it will take 3 components (C1, C2, C3) to make one full copy of the object.
-- 由于组件最大容量限制为 255GB，该对象需要拆分为 3 个组件（C1、C2、C3）才能构成完整副本。
 - The object has a VM storage policy of RAD-1 (mirror) and FTT=1. This policy requires two replicas of the object on separate hosts and a witness component acting as a tie-breaker.
-- 该对象分配了 RAD-1（镜像）和 FTT=1 的存储策略，这意味着需要在不同主机上创建两个副本，并且需要一个见证组件作为仲裁者。
 
 ![](https://sre.ecarry.uk/sre-doc/2025/05/59e05e2f8198b6cb82b2b711dd856791.webp)
 Figure 1: vSAN Objects and Components
-图 1：vSAN 对象与组件
 
 ## vSAN Object Component States
+
+A component has four possible states:
+
+- **Active**: Accessible
+- **Absent**: Inaccessible with no error codes sensed (host or network outage, or maintenance mode with no data evacuation)
+- **Degraded**: Inaccessible with error codes sensed. (i.e. device failure) In this case the rebuild will begin immediately
+- **Active-Stale**: Sequence numbers of components not up to date (i.e. multiple host failures with one coming back up online.
+
+In the story above, the customer had several data objects on his host:
+
+- 2 objects with FTT=0
+- 108 objects with FTT=1 (mirror)
+
+![](https://sre.ecarry.uk/sre-doc/2025/05/5ee1a7d8fcad96fb0ddbdd01fff6dca5.webp)
+Figure 2: vSAN Maintenance Mode Options
+
+When he put the host in maintenance mode and chose No Data Evacuation, he failed to heed the “What-if” information and as a result of the absent objects, the FTT=0 VMs were unable to tolerate the “failure” and were inaccessible until the host returned. The FTT=1 VMs were still accessible but non-compliant with their storage policy because they could not tolerate an additional failure.
+
+## vSAN Rebuild Process
+
+When vSAN components are offline they are marked “absent” and colored orange in the vSAN user interface. vSAN waits 60 minutes by default before starting the repair operation. vSAN has this delay as many issues are transient. In other words, vSAN expects absent components to be back online in a reasonable amount of time and we want to avoid copying large quantities of data unless it is necessary. An example is a host being temporarily offline due to an unplanned reboot.
+
+![](https://sre.ecarry.uk/sre-doc/2025/05/e089705aed72ba7d17233962204176b3.webp)
+Figure 3: Component State
+
+vSAN will begin the repair process for absent components after 60 minutes to restore redundancy. For example, an object such as a virtual disk (VMDK file) protected by a RAID-1 mirroring storage policy will create a second mirror copy from the healthy copy. This process can take a considerable amount of time depending on how much data must be copied. The rebuild process continues even if the absent copy comes back online in versions of vSAN prior to 6.6.
+
+## Repair Objects Immediately
+
+There are some scenarios in which a host will be absent for longer than 60 minutes. The affected VMs are still accessible however non-compliant with their storage policies. More importantly in the case of FTT=1, until a rebuild occurs vSAN will not be able to tolerate additional failures. If this is the case, you may choose to repair the objects immediately. This option will resynchronize the absent objects on available hosts in the vSAN cluster.
+
+![](https://sre.ecarry.uk/sre-doc/2025/05/545b1527458810e4faca17698ce9a4b6.webp)
+Figure 4: Repair Objects Immediately

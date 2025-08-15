@@ -1,0 +1,24 @@
+{
+  "pages": [
+    "sso",
+    "vds-config",
+    "vss-advanced-networking",
+    "identity-sources",
+    "vcsa-deploy-config",
+    "ha-drs-advanced-options",
+    "vcenter-ha",
+    "content-library-setup",
+    "content-library-subscribe",
+    "vm-template-versions",
+    "vcenter-file-backup",
+    "vsphere-trust-authority",
+    "vsphere-certificates",
+    "lifecycle-manager",
+    "network-stacks",
+    "host-profiles",
+    "esxi-boot-options",
+    "cluster-quickstart",
+    "esxi-setup-config",
+    "vsphere-with-tanzu-config"
+  ]
+}

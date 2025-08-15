@@ -1,0 +1,17 @@
+{
+  "pages": [
+    "pre-requisites-components",
+    "components-topology",
+    "storage-concepts",
+    "esxi-cluster-concepts",
+    "networking-switches",
+    "lifecycle-manager-concepts",
+    "vsan-primary-storage-basics",
+    "vm-encryption-basics",
+    "vm-security-methods",
+    "identity-federation",
+    "distributed-services-engine",
+    "vmware-tools-use-cases",
+    "vsphere-with-tanzu-components"
+  ]
+}

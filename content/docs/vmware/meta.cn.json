@@ -18,6 +18,15 @@
     "---Troubleshooting---",
     "troubleshooting-index",
     "manage-vsan-disk",
-    "manage-certificate"
+    "manage-certificate",
+    "---VMware Certified Professional---",
+    "vcp-index",
+    "architecture-technologies",
+    "products-solutions",
+    "planning-designing",
+    "installing-configuring-setup",
+    "performance-tuning-optimization-upgrades",
+    "troubleshooting-repairing",
+    "administrative-operational-tasks"
   ]
 }

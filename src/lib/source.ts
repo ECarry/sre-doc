@@ -1,4 +1,4 @@
-import { docs } from "@/.source";
+import { docs } from "collections/server";
 import { loader } from "fumadocs-core/source";
 import { i18n } from "./i18n";
 

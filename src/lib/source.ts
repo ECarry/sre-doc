@@ -1,7 +1,7 @@
 import { docs } from "collections/server";
 import { loader } from "fumadocs-core/source";
 import { i18n } from "./i18n";
-import { FaLinux, FaDocker, FaNetworkWired } from "react-icons/fa";
+import { FaLinux, FaDocker, FaNetworkWired, FaDatabase } from "react-icons/fa";
 import { GrVmware } from "react-icons/gr";
 import { createElement } from "react";
 
@@ -23,6 +23,9 @@ export const source = loader({
     }
     if (icon === "network") {
       return createElement(FaNetworkWired);
+    }
+    if (icon === "kingbase") {
+      return createElement(FaDatabase);
     }
   },
 });

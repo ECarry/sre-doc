@@ -3,5 +3,5 @@
   "description": "",
   "root": true,
   "icon": "network",
-  "pages": ["index", "network-basic"]
+  "pages": ["index", "---HCIA---", "datacom", "---HCIP---", "datacom-core"]
 }

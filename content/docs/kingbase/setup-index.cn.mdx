@@ -1,0 +1,226 @@
+---
+title: 安装
+description: 安装和设置指南
+---
+
+安装包下载地址：https://www.kingbase.com.cn/download.html
+
+## 安装方式
+
+| 安装方式         | 描述                                                                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 图形安装向导界面 | 用户通过 `./setup.sh -i swing` 的方式启动图形化安装向导                                                                 |
+| 字符安装向导界面 | 用户通过 `./setup.sh -i console` 的方式启动字符化安装向导                                                               |
+| 静默安装         | 用户通过 `./setup.sh -i silent -f install.properties` 的方式启动静默安装, install.properties 需放在 setup.sh 同级目录下 |
+
+## 安装准备
+
+### 按实施规范创建目录
+
+1. 为了利于数据库的日常运维、持续使用、存储扩容等，我们在安装前须做好选项 存储目录规划。
+
+| 选项        |                                                           设置                                                           |
+| ----------- | :----------------------------------------------------------------------------------------------------------------------: |
+| 目录        | 安装软件存储目录： `/install` 备份目录： `/backup` 归档目录： `/archive` 数据存储目录： `/data` KES 安装目录： `/kes/v9` |
+| 端口        |                                                          54321                                                           |
+| SYSTEM 密码 |                                                         kingbase                                                         |
+| 数据库编码  |                                                           UTF8                                                           |
+
+2. 实际操作
+
+（1） 创建目录
+
+```bash
+mkdir -p /backup/dump /archive /data /KingbaseES/V9 /install
+```
+
+(2) 添加用户和组
+
+```bash
+useradd kingbase
+```
+
+（3） 设置目录的属主 属组 权限
+
+```bash
+chown -R kingbase:kingbase /install /backup /archive /data /KingbaseES
+chmod -R 775 /KingbaseES /install /archive /backup
+chmod -R 700 /data
+[root@localhost ~]# ll  / | grep kingbase
+drwxrwxr-x.   2 kingbase kingbase    6 4月   2 23:59 archive
+drwxrwxr-x.   3 kingbase kingbase   18 4月   3 00:01 backup
+drwx------.   2 kingbase kingbase    6 4月   2 23:59 data
+drwxrwxr-x.   2 kingbase kingbase    6 4月   3 00:02 install
+drwxrwxr-x.   3 kingbase kingbase   16 4月   3 00:12 KingbaseES
+```
+
+说明：
+
+- **775**：权限为 `rwxrwxr-x`，目录属主和属组拥有读/写/执行权限，其他用户只有读/执行权限。这里用于安装目录、归档目录、备份目录等，方便同组运维人员协作管理。
+- **700**：权限为 `rwx------`，只有目录属主有读/写/执行权限，其他用户无权限。这里用于数据库数据目录 `/data`，避免非 `kingbase` 用户访问数据文件。
+
+(4) 上传安装盘 iso 检查 md5 挂载
+
+```bash
+md5sum /install/KingbaseES_V009R001C010B0004_Lin64_install.iso
+mount -o loop /install/KingbaseES_V009R001C010B0004_Lin64_install.iso /mnt
+```
+
+(5) 使用 kingbase 用户复制挂载后的安装文件到 /install 目录
+
+```bash
+mkdir -p /install/KES-V009R001C010B0004-INSTALL
+cp -r /mnt/* /install/KES-V009R001C010B0004-INSTALL/
+```
+
+修改所有者和组为 kingbase:
+
+```bash
+chown -R kingbase:kingbase /install/KES-V009R001C010B0004-INSTALL/
+chmod -R 755 /install
+```
+
+(6) 上传授权文件
+
+```bash
+[root@localhost install]# ll
+-rwxr-xr-x. 1 root     root           4998 4月   3 00:19 license_4_V009R001C-dev-365d.dat
+mkdir -p /install/license
+chown -R kingbase:kingbase /install/license
+chmod -R 775 /install
+```
+
+## 安装数据库
+
+### 1. 启动安装程序
+
+```bash
+su - kingbase
+[kingbase@localhost ~]$ bash /install/KES-V009R001C010B0004-INSTALL/setup.sh -i console
+Java Version: 1.8.0_92
+Now launch installer...
+Command line arguments: -console -language chn
+================================================================================
+欢迎使用KingbaseES安装程序
+----
+
+欢迎使用本安装程序！
+
+本安装程序旨在为您提供方便快捷的安装体验。
+在开始安装之前，请注意以下几点：
+
+退出应用程序:
+    在安装过程中，我们建议退出所有正在运行的应用程序，
+    以确保安装程序顺利进行，您可以在安装完成后重新打开这些应用程序。
+
+保存文档:
+    在继续本次安装之前，请确保您已保存并关闭所有打开的文档。
+    这可以防止因安装过程中需要重启电脑而导致数据丢失。
+
+可能需要重启:
+    本次安装可能需要重启您的电脑以完成安装过程。
+    请不要担心，这是为了确保安装的完整性和稳定性。
+    安装程序会在需要重启时提醒您。
+
+安装前准备:
+    在继续安装之前，建议您查看安装程序提供的系统要求和注意事项，
+    这将有助于您顺利完成安装并获得最佳使用体验。
+
+谢谢您使用KingbaseES，
+如果您在安装过程中遇到任何问题或需要帮助，请随时联系我们的技术支持团队。
+祝您使用愉快！
+
+按下 [ENTER] 下一步， [Q] 退出程序 [默认： <ENTER>]
+
+输入授权文件地址: [默认：  ]
+/install/license/license_4_V009R001C-dev-365d.dat
+
+输入一个绝对路径，或按ENTER键以接受缺省路径 [默认： /opt/Kingbase/ES/V9]
+/KingbaseES/V9
+
+ 恭喜您！安装完成
+
+  安装目录：
+    /KingbaseES/V9
+
+
+    引导组件:/KingbaseES/V9/KESRealPro/V009R001C010/install
+    产品手册:/KingbaseES/V9/KESRealPro/V009R001C010/doc
+    数据库运维工具:/KingbaseES/V9/KESRealPro/V009R001C010/SupTools
+    数据库服务器:/KingbaseES/V9/KESRealPro/V009R001C010/Server
+    高可用组件:/KingbaseES/V9/KESRealPro/V009R001C010/KingbaseHA
+    接口:/KingbaseES/V9/KESRealPro/V009R001C010/Interface
+    数据库集群部署工具:/KingbaseES/V9/KESRealPro/V009R001C010/ClientTools/guitools/DeployTools
+    数据库迁移工具:/KingbaseES/V9/KESRealPro/V009R001C010/ClientTools/guitools/KDts
+    数据库开发工具(CS):/KingbaseES/V9/KESRealPro/V009R001C010/ClientTools/guitools/KStudio
+
+
+如需初始化数据库，请启动Kconsole:
+/KingbaseES/V9/Server/bin/kconsole.sh
+手动初始化数据库:
+/KingbaseES/V9/Server/bin/initdb -U "system" -W -D "/KingbaseES/V9/data"
+[ Writing the uninstaller data ... ]
+[ 命令行安装完成 ]
+```
+
+### 2. 初始化数据库
+
+手动初始化数据库:
+
+```bash
+/KingbaseES/V9/Server/bin/initdb -U "system" -W -D "/data"
+[kingbase@localhost ~]$ /KingbaseES/V9/Server/bin/initdb -U "system" -W -D "/data"
+数据库簇将使用本地化语言 "zh_CN.UTF-8"进行初始化.
+默认的数据库编码已经相应的设置为 "UTF8".
+属于此数据库系统的文件宿主为用户 "kingbase".
+此用户也必须为服务器进程的宿主.
+initdb: could not find suitable text search configuration for locale "zh_CN.UTF-8"
+缺省的文本搜索配置将会被设置到"simple"
+
+字符串的比较区分大小写.
+禁止为数据页生成校验和.
+
+输入新的超级用户口令:
+再输入一遍:
+
+修复已存在目录 /data 的权限 ... 成功
+正在创建子目录 ... 成功
+选择动态共享内存实现 ......posix
+选择默认最大联接数 (max_connections) ... 100
+选择默认共享缓冲区大小 (shared_buffers) ... 128MB
+选择默认时区...Asia/Shanghai
+创建配置文件 ... 成功
+开始设置加密设备
+正在初始化加密设备...成功
+正在运行自举脚本 ...成功
+正在执行自举后初始化 ...成功
+创建安全数据库...成功
+加载安全数据库...成功
+同步数据到磁盘...成功
+
+initdb: 警告: enabling "trust" authentication for local connections
+你可以通过编辑 sys_hba.conf 更改或你下次
+执行 initdb 时使用 -A或者--auth-local和--auth-host选项.
+
+成功。您现在可以用下面的命令开启数据库服务器：
+
+    /KingbaseES/V9/Server/bin/sys_ctl -D /data -l 日志文件 start
+
+[kingbase@localhost ~]$ /KingbaseES/V9/Server/bin/sys_ctl -D /data -l 日志文件 start
+等待服务器进程启动 .... 完成
+服务器进程已经启动
+
+[kingbase@localhost ~]$ ps -xf| grep -v grep | grep -i kingbase
+10028 ?        Ss     0:00 /KingbaseES/V9/KESRealPro/V009R001C010/Server/bin/kingbase -D /data
+10029 ?        Ss     0:00  \_ kingbase: logger
+10031 ?        Ss     0:00  \_ kingbase: checkpointer
+10032 ?        Ss     0:00  \_ kingbase: background writer
+10033 ?        Ss     0:00  \_ kingbase: walwriter
+10034 ?        Ss     0:00  \_ kingbase: autovacuum launcher
+10035 ?        Ss     0:00  \_ kingbase: archiver   last was 000000010000000000000005
+10036 ?        Ss     0:00  \_ kingbase: stats collector
+10037 ?        Ss     0:00  \_ kingbase: kwr collector
+10038 ?        Ss     0:00  \_ kingbase: ksh writer
+10040 ?        Ss     0:00  \_ kingbase: ksh collector
+10041 ?        Ss     0:00  \_ kingbase: logical replication launcher
+```

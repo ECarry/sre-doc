@@ -1,0 +1,7 @@
+{
+  "title": "Network",
+  "description": "",
+  "root": true,
+  "icon": "network",
+  "pages": ["index", "---HCIA---", "datacom", "---HCIP---", "datacom-core"]
+}

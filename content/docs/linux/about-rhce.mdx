@@ -1,0 +1,90 @@
+---
+title: About RHCE
+description: Red Hat Certified Engineer certification overview
+---
+
+# Red Hat Certified Engineer (RHCE)
+
+The Red Hat Certified Engineer (RHCE) is an advanced certification that builds upon the skills validated by the RHCSA. The current RHCE certification (EX294) focuses on automating system administration tasks using Red Hat Ansible Automation.
+
+## Certification Overview
+
+The RHCE certification validates your ability to:
+
+- Automate system administration tasks using Ansible
+- Create and maintain Ansible playbooks and roles
+- Manage configurations across multiple systems consistently
+- Deploy and manage network services using Ansible
+- Implement automated security controls
+- Work with advanced system administration techniques
+
+## Exam Details
+
+- **Exam Code**: EX294
+- **Format**: Hands-on, performance-based exam (no multiple choice)
+- **Duration**: 4 hours
+- **Prerequisites**: Valid RHCSA certification
+- **Validity**: 3 years from the date of certification
+
+## Study Path
+
+The recommended learning path for RHCE includes:
+
+<Cards>
+  <Card title="Shell Scripting & Automation" href="/docs/linux/shell-scripting" />
+  <Card title="Network Services (HTTP, DNS, NFS)" href="/docs/linux/network-services" />
+  <Card title="Ansible Automation" href="/docs/linux/ansible" />
+  <Card title="SELinux Configuration & Management" href="/docs/linux/selinux" />
+  <Card title="System Performance Tuning" href="/docs/linux/performance" />
+  <Card title="Advanced Networking & Firewalld" href="/docs/linux/advanced-networking" />
+  <Card title="Virtualization & KVM Management" href="/docs/linux/virtualization" />
+</Cards>
+
+## Career Impact
+
+Earning your RHCE certification qualifies you for roles such as:
+
+- Senior Linux System Administrator
+- DevOps Engineer
+- Automation Specialist
+- Site Reliability Engineer
+- Linux Infrastructure Architect
+
+The RHCE certification demonstrates advanced skills and opens doors to higher-level positions with increased responsibilities and compensation.
+
+## Technical Evolution
+
+It's important to note that the RHCE exam has evolved over time:
+
+- **Previous RHCE (EX300)**: Focused on advanced system administration, network services, and security
+- **Current RHCE (EX294)**: Focuses primarily on Ansible automation
+
+This shift reflects the industry's move toward automation and infrastructure as code practices, making the RHCE certification highly relevant for modern IT operations.
+
+## Practice Environment
+
+To prepare for the RHCE exam, set up a lab environment with:
+
+- Multiple RHEL/CentOS/Rocky Linux VMs
+- Ansible controller node and multiple managed nodes
+- Network connectivity between systems
+
+```yaml
+# Example Ansible playbook structure (inventory.yml):
+---
+all:
+  hosts:
+    web01:
+      ansible_host: 192.168.1.10
+    db01:
+      ansible_host: 192.168.1.11
+  children:
+    webservers:
+      hosts:
+        web01:
+    dbservers:
+      hosts:
+        db01:
+```
+
+Practice creating playbooks, roles, and templates to automate system configuration across your lab environment.

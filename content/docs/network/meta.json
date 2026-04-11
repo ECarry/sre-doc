@@ -1,0 +1,14 @@
+{
+  "title": "Network",
+  "description": "",
+  "root": true,
+  "icon": "network",
+  "pages": [
+    "index",
+    "---HCIA Datacom---",
+    "datacom",
+    "---HCIP Datacom---",
+    "datacom-core",
+    "datacom-routing-switching"
+  ]
+}

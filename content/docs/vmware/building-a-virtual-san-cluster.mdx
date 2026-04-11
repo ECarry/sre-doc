@@ -1,0 +1,47 @@
+---
+title: Installation
+description: vSAN deployment options
+---
+
+## Building a vSAN Cluster
+
+You can choose the storage architecture and deployment option when creating a vSAN cluster.
+Chose the vSAN storage architecture that best suits your resources and your needs.
+
+## vSAN Storage Architecture
+
+vSAN provides two storage architectures: vSAN Original Storage Architecture (OSA) and vSAN Express Storage Architecture (ESA).
+
+### vSAN Original Storage Architecture (OSA)
+
+vSAN Original Storage Architecture (OSA) is designed for a wide range of storage devices, including flash solid state drives (SSD) and magnetic disk drives (HDD). Each host that contributes storage contains one or more disk groups. Each disk group contains one flash cache device and one or more capacity devices.
+
+![OSA](https://sre.ecarry.uk/osa.jpeg)
+
+### vSAN Express Storage Architecture (ESA)
+
+vSAN Express Storage Architecture (ESA) is designed for high-performance NVMe based TLC flash devices and high performance networks. Each host that contributes storage contains a single storage pool of one or more flash devices. Each flash device provides caching and capacity to the cluster.
+
+![ESA](https://sre.ecarry.uk/esa.webp)
+
+## vSAN Deployment Options
+
+vSAN provides multiple deployment options, including single-site vSAN clusters, Two-Node vSAN Cluster, and vSAN stretched clusters.
+
+### Single-site vSAN Cluster
+
+A single site vSAN cluster consists of a minimum of three hosts. Typically, all hosts in a single site vSAN cluster reside at a single site, and are connected on the same Layer 2 network. All-flash configurations require 10 Gb network connections, and vSAN Express Storage Architecture requires 10 Gb network connections.
+
+![SingleSite](https://sre.ecarry.uk/singlesite.webp)
+
+### Two-Node vSAN Cluster
+
+Two-node vSAN clusters are often used for remote office/branch office environments, typically running a small number of workloads that require high availability. A two-node vSAN cluster consists of two hosts at the same location, connected to the same network switch or directly connected. You can configure a two-node vSAN cluster that uses a third host as a witness, which can be located remotely from the branch office. Usually the witness resides at the main site, along with the vCenter Server.
+
+![MultiSite](https://sre.ecarry.uk/multisite.png)
+
+### vSAN stretched cluster
+
+A vSAN stretched cluster provides resiliency against the loss of an entire site. The hosts in a vSAN stretched cluster are distributed evenly across two sites. The two sites must have a network latency of no more than five milliseconds (5 ms). A vSAN witness host resides at a third site to provide the witness function. The witness also acts as tie-breaker in scenarios where a network partition occurs between the two data sites. Only metadata such as witness components is stored on the witness.
+
+![ExtendCluster](https://sre.ecarry.uk/extend.png)

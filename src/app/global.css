@@ -48,3 +48,18 @@ html > body[data-scroll-locked] {
   --color-fd-accent-foreground: hsl(0, 0%, 90%);
   --color-fd-ring: hsl(0, 0%, 54.9%);
 }
+
+@keyframes gradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% auto;
+  animation: gradient 3s ease infinite;
+}

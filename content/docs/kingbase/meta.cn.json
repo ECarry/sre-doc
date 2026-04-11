@@ -1,7 +1,0 @@
-{
-  "title": "金仓数据库",
-  "description": "",
-  "root": true,
-  "icon": "kingbase",
-  "pages": ["---Introduction---", "index", "---Setup---", "setup-index"]
-}

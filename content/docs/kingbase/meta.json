@@ -1,7 +1,0 @@
-{
-  "title": "Kingbase",
-  "description": "",
-  "root": true,
-  "icon": "kingbase",
-  "pages": ["---Introduction---", "index", "---Setup---", "setup-index"]
-}

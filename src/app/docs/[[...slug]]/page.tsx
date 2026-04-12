@@ -21,9 +21,11 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page).url;
 
+  const filteredToc = page.data.toc.filter((item) => item.depth <= 3);
+
   return (
     <DocsPage
-      toc={page.data.toc}
+      toc={filteredToc}
       full={page.data.full}
       tableOfContent={{ style: "clerk" }}
     >

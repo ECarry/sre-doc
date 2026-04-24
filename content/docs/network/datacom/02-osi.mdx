@@ -314,4 +314,75 @@ Address Resolution Protocol，地址解析协议
 
 ### ICMP
 
-Internet Control Message Protocol，互联网控制报文协议
+Internet Control Message Protocol，互联网控制报文协议，用来在网络设备间各种差错和控制信息，它对于收集各种网络信息、诊断和排除各种网络故障具有至关重要的作用。
+
+#### ICMP 数据包格式
+
+![](https://sre.ecarry.uk/sre-doc/2026/04/ac05bef418958d334af501d844d30aad.png)
+
+Type 表示 ICMP 消息类型，Code 表示同一消息类型中的不同信息。
+
+|类型|编码|描述|
+|-|-|-|
+|0|0|Echo Reply|
+|3|0|Destination Network Unreachable|
+|3|1|Destination Host Unreachable|
+|3|2|Destination Protocol Unreachable|
+|3|3|Destination Port Unreachable|
+|5|0|Redirect Datagram for the Network|
+|8|0|Echo Request|
+
+### IP
+
+#### IP报文结构
+
+![](https://sre.ecarry.uk/sre-doc/2026/04/8ecda09cea4bb1fd67b3f984bb178d51.png)
+![](https://sre.ecarry.uk/sre-doc/2026/04/d92d48a689605d97b18cc20a828b8a50.png)
+
+#### 分片
+
+当数据包比链路 MTU（默认1500字节） 大时，就可以被分解为很多的足够小的数据包的过程叫做分片。
+
+![](https://sre.ecarry.uk/sre-doc/2026/04/ffd5e92dbf3eb24e325724567f7c0851.png)
+
+1. 什么是 IP 分片
+
+当数据报长度超过链路的最大传输单元（MTU）时，
+网络层会对数据报进行分割，这个过程称为 **IP 分片（Fragmentation）**。
+
+分片可以在发送端或中间路由器完成，
+最终由接收端进行重组。
+
+2. 分片相关字段（IPv4 首部）
+
+在 IPv4 首部中，与分片有关的字段有：
+
+ 1️⃣ Identification（标识）
+
+* 用于标识同一个原始数据报的所有分片
+* 所有分片该字段值相同
+
+ 2️⃣ Flags（标志位）
+
+共 3 位：
+
+| 位   | 名称                     | 含义              |
+| --- | ---------------------- | --------------- |
+| 第1位 | **Reserved（保留位）**      | 必须为 0,否则报文无效（或被丢弃）        |
+| 第2位 | **DF（Don't Fragment）** | 1=不允许分片，0=允许分片  |
+| 第3位 | **MF（More Fragments）** | 1=后面还有分片，0=最后一片 |
+
+
+ 3️⃣ Fragment Offset（片偏移）
+
+* 表示该分片在原始数据中的位置
+* 单位：**8 字节（8 Byte）**
+
+3. 一句话总结
+
+👉 IP 分片通过 **Identification、Flags、Fragment Offset** 来实现分片与重组。
+
+示例： Wireshark 抓的分片包是最后一个分片：
+![](https://sre.ecarry.uk/sre-doc/2026/04/dae6f22f396d04966c576e1a9d175f6a.png)
+
+#### TTL

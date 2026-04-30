@@ -7,3 +7,39 @@ index: true
 ## VRP
 
 Versatile Routing Platform，通用路由平台
+
+### 用户级别及命令级别
+
+|用户级别|命令级别|级别名称|说明|
+|-|-|-|-|
+|0|0|访问级|网络诊断工具命令（ping、tracert）、从本设备出发访问外部设备的命令（Telnet客户端）、部分display命令等。|
+|1|0、1|监控级|用于系统维护，包括display等命令。并不是所有display命令都是监控级，比如display current-configuration命令和display saved-configuration命令是3级管理级。|
+|2|0、1、2|配置级|业务配置命令，包括路由、各个网络层次的命令，向用户提供直接网络服务。|
+|3～15|0、1、2、3|管理级|用于系统基本运行的命令，对业务提供支撑作用，包括文件系统、FTP、TFTP下载、命令级别设置命令以及用于业务故障诊断的debugging命令等。|
+
+更改用户级别命令：
+```
+local-user user1 privilege level 15
+```
+
+## Telnet
+
+配置命令：
+
+```
+telnet server enable // 启用Telnet服务
+display telnet server status // 查看Telnet服务状态
+
+user-interface vty 0 4 //进入 VTY 配置模式
+  authentication-mode password/aaa // 设置认证模式为密码认证或AAA认证
+  set authentication password cipher your-password // 设置密码
+  user privilege level 15 // 设置用户级别为15
+user-interface maximum vty 10 // 设置最大VTY数量为10
+
+aaa  
+  local-user user1 password cipher your-password // 创建本地用户并设置密码
+  local-user user1 privilege level 15 // 设置用户级别为15
+  local-user user1 service-type telnet // 设置用户服务类型为Telnet
+```
+
+## VRP 文件系统

@@ -349,3 +349,31 @@ RIP（Routing Information Protocol，路由信息协议）：
 |VLSM/CIDR|不支持 VLSM 和 CIDR|支持 VLSM，支持路由聚合与 CIDR|
 |报文发送方式|广播|广播或组播（224.0.0.9）|
 |认证|不支持认证|支持明文认证和 MD5 密文认证|
+
+### 基本配置
+
+<img src="https://sre.ecarry.uk/sre-doc/2026/05/20260514150506350.png"/>
+
+```bash
+[HUAWEI]rip
+[HUAWEI-rip]version 2
+[HUAWEI-rip]network 10.0.0.0
+[HUAWEI-rip]network 12.0.0.0
+[HUAWEI-rip]network 13.0.0.0
+```
+
+|命令|备注|
+|---|---|
+|rip 1|开启 RIP 进程，进程缺省为 1|
+|version 2|开启 RIPv2|
+|network 10.0.0.0|宣告网络，即指定运行 RIP 的接口，只需要输入接口的主类网络地址即可；只有处于此网络中的接口，才能进行 RIP 报文的接收和发送|
+|rip metricin 5|在接收路由时增加度量值|
+|rip metricout 5|在发送路由时修改度量值|
+|rip split-horizon|开启水平分割，默认开启|
+|rip poison-reverse|开启毒性逆转，默认关闭|
+|undo rip input|禁止接收 RIP 数据包|
+|undo rip output|禁止发送 RIP 数据包|
+|silent-interface g0/0/0|配置被动接口，只收不发|
+|display rip|验证 RIP 信息|
+|display rip int g0/0/0 verbose|验证 RIP 接口相信信息|
+

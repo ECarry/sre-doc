@@ -5,6 +5,7 @@
   "icon": "network",
   "pages": [
     "index",
+    "network-enginner",
     "---HCIA Datacom---",
     "datacom",
     "---HCIP Datacom---",

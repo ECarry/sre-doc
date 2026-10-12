@@ -1,6 +1,13 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/ocean.css";
 @import "fumadocs-ui/css/preset.css";
+@import "katex/dist/katex.css";
+
+mark {
+  background-color: color-mix(in srgb, #facc15 45%, transparent);
+  border-radius: 0.2rem;
+  padding: 0 0.15em;
+}
 
 html {
   scrollbar-gutter: stable;

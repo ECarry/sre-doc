@@ -896,7 +896,7 @@ P2P和Broadcast的Hello/Dead time一致，==可以建立邻居，但不能传递
 
 ##### cost 开销
 * OSPF 使用 Cost “开销” 作为路由**度量值**。
-* OSPF 接口 $cost = 100M/接口带宽$ ，不足1时取1，其中 100M 为 OSPF 参考带宽（reference-bandwidth），可修改。
+* OSPF 接口的计算公式为 $cost = \frac{100M}{\text{interface bandwidth}}$，不足1时取1，其中 100M 为 OSPF 参考带宽（reference-bandwidth），可修改。
 * **每一个激活 OSPF 的接口都有一个 cost 值。**
 * 一条 OSPF 路由的 cost 由该路由从起源一路到达本地的所有==入接口 cost 值的总和==。
 ![cost](https://sre.ecarry.uk/attachments/20260902175312.png)

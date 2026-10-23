@@ -912,3 +912,64 @@ ip address 100.1.1.2 30
 ip route-static 192.168.10.1 24 192.168.100.1
 ip route-static 192.168.10.1 24 192.168.200.1
 ```
+
+## 8.7 防火墙配置
+![fw](https://sre.ecarry.uk/attachments/20261023232159.png)
+
+**配置要求**：
+（1）防火墙接口的 IP 地址如拓扑所示，将接口划入相应的安全区域。
+（2）内网主机 PC1 可以主动访问 Internet，但 Internet 无法主动访问 PC1。
+（3）出口防火墙进行 NAT，NAT 公网地址池 100.1.1.10-100.1.1.20。
+（4）Internet 可以通过公网地址 100.1.1.100/24 访问目的地址为 192.168.2.100/24 的内部 Web 服务。
+
+```bash
+# FW 将接口加入相应的 zone
+firewall zone trust
+add interface g 1/0/1
+
+firewall zone untrusr
+add interface g 1/0/3
+
+firewall zone dmz
+add interface g 1/0/2
+
+# 配置安全策略
+securiti-policy
+rule name trust_to_untrust
+source-zone trust
+destination-zone untrust
+source-address 192.168.1.0 24
+destination-address any
+action permit  # 允许
+
+# NAT 配置
+nat address-group addressgroup1
+mode pat
+section 0 100.1.1.10 100.1.1.20
+
+# NAT 策略
+nat policy
+rule name policy _nat1
+source-zone trust
+destination-zone untrust
+source-address 192.168.1.0 24
+destination-address any
+# 将源地址 NAT 转化为地址池地址
+action source-nat address-group addressgroup1
+
+# trust -> dmz 流量放行
+security-policy
+rule name trust_to_dmz
+source-zone trust
+destination-zone dmz
+action permit
+
+# 端口映射访问内网web服务器
+nat server policy_web protocol tcp global 100.1.1.100 80 inside 192.168.2.100 80
+security-policy
+rule name untrust_t0_dmz
+source-zone untrust
+destination-zone dmz
+destination-address 192.168.2.100 32
+action permit
+```

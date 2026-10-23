@@ -82,3 +82,833 @@ description: Network Engineer 第8章
 | **Web 图形化** | HTTP         | 图形化界面，更直观            | 加载SSL证书，用于登录认证，配置几乎相同 | 登录使用HTTPS（自动跳转），传输数据使用HTTP    |
 |                | HTTPS        |                               |                                         | 登录和传输数据都使用HTTPS，仅需要开启HTTPS服务 |
 | **网管系统**   | SNMP/Netconf | 批量下发配置                  | 初识配置比较复杂                        | 大量设备管理                                   |
+
+## 8.2 交换机的配置
+| 年份       | 配置分值    | 基础配置      | 高频配置                                            | 偏门配置    |
+| ---------- | ----------- | ------------- | --------------------------------------------------- | ----------- |
+| 2021年11月 | 14+20+10=44 | 必考<br>5-8分 | DHCP、ACL、静态路由、BFD、VRRP                      | 子网VLAN    |
+| 2021年5月  | 16+10=26    |               | ACL、OSPF、BGP                                      | POE         |
+| 2020年11月 | 10+18+12=40 |               | 默认路由、RIP、ACL、策略路由、DHCP                  | WLAN        |
+| 2019年11月 | 20+15=35    |               | VLAN、ACL、策略路由                                 | 无          |
+| 2019年5月  | 12+11=33    |               | DHCP、ACL                                           | IPSec、IPv6 |
+| 2018年11月 | 20+15=35    |               | VLAN、VLANIF、静态路由/浮动路由、策略路由、ACL、NAT | 无          |
+| 2018年5月  | 6+13=19     |               | DHCP、NAT、浮动静态路由                             | 无          |
+
+- 基础配置（送分题）：system-view、sysname、interface vlanif、写个IP地址
+- 高频配置（一定要会）：VLAN、DHCP、ACL、策略路由、NAT、静态/默认/RIP/OSPF
+- 偏门的考点（尽力而为）：IPv6、4G、WLAN、IPSEC
+
+### 8.2.1 配置交换机
+交换机Console端口的默认参数：
+- 端口速率：9600b/s
+- 数据位：8
+- 奇偶校验：无
+- 停止位：1
+- 流控：无
+
+#### 基本配置
+![视图](https://sre.ecarry.uk/attachments/20261023150507.png)
+
+#### 华为设备登录配置
+
+```bash
+<AR> system-view          //进入系统模式
+[AR] sysname Huawei      //设备命名为Huawei
+[Huawei] telnet server enable   //开启设备telnet功能
+[Huawei] user-interface vty 0 4   //开启登录端口0-4
+[Huawei-ui-vty0-4] protocol inbound telnet  //通过telnet协议登录
+[Huawei-ui-vty0-4] authentication-mode aaa  //认证方式为aaa
+
+[Huawei] aaa  //启用aaa
+[Huawei-aaa] local-user admin123 password admin123   //配置用户名密码
+[Huawei-aaa] local-user admin123 service-type telnet  //用户用于telnet
+[Huawei-aaa] local-user admin123 privilege level 15   //用户等级为15
+[Huawei-aaa] quit    //退出来
+```
+
+
+
+### 8.2.2 配置和管理VLAN
+#### 基础配置
+```bash
+<HUAWEI> system-view    //进入系统模式
+[HUAWEI] sysname Switch    //交换机重命名
+[Switch] vlan 100    //创建vlan 100（批量创建命令：vlan batch 10 20）
+[Switch-vlan100] quit    //退出vlan模式
+[Switch] interface gigabitethernet 0/0/1    //进入接口
+[Switch-GigabitEthernet0/0/1] port link-type access    //把交换机接口模式设置为access
+[Switch-GigabitEthernet0/0/1] port default vlan 100    //把接口划入vlan100
+[Switch-GigabitEthernet0/0/1] quit    //退出
+
+[Switch] interface vlanif 100    //进入三层vlanif接口
+[Switch-Vlanif100] ip address 172.16.1.1 24    //配置IP地址
+[Switch-Vlanif100] quit    //退出
+```
+
+
+
+### 8.2.3 DHCP配置
+- DHCP（Dynamic Host Configuration Protocol，动态主机配置协议）实现网络动态分配IP地址。
+- DHCP采用C/S构架，主机无需配置，从服务器端获取地址，可实现接入网络后即插即用。
+
+#### interface DHCP
+1. 开启DHCP功能
+   `[Huawei] dhcp enable`
+2. 开启接口采用==接口地址池(select interface)==的DHCP服务器端功能
+   `[Huawei-Gigabitthernet0/0/0] dhcp select interface`
+3. 指定接口地址池下的==DNS服务器地址(dns-list)==
+   `[Huawei-Gigabitthernet0/0/0] dhcp server dns-list ip-address`
+4. 配置接口地址池中==不参与自动分配的IP地址范围(excluded-ip-address)==
+   `[Huawei-Gigabitthernet0/0/0] dhcp server excluded-ip-address start-ip-address [ end-ip-address ]`
+5. 配置DHCP服务器接口地址池中IP地址的==租用有效期(lease)==限功能
+   `[Huawei-Gigabitthernet0/0/0] dhcp server lease { day day [ hour hour [ minute minute ] ] | unlimited }`
+   缺省情况下，IP地址的租期为1天。
+
+![接口DHCP](https://sre.ecarry.uk/attachments/20261023174020.png)
+**需求描述：**
+- 配置一台路由器作为DHCP服务器端，使用接口GE0/0/0所属的网段作为DHCP客户端的地址池，同时将接口地址设为DNS Server地址，租期设置为3天。
+
+```bash
+dhcp enable
+interface g 0/0/0
+dhcp select interface
+dhcp server dns-list 10.1.1.2
+dhcp server excluded-ip-address 10.1.1.2
+dhcp server lease day 3
+```
+#### global DHCP
+6. 创建全局地址池
+   `[Huawei] ip pool ip-pool-name`
+7. 配置全局地址池可动态分配的IP地址范围
+   `[Huawei-ip-pool-2] network ip-address [ mask { mask | mask-length } ]`
+8. 配置DHCP客户端的网关地址
+   `[Huawei-ip-pool-2] gateway-list ip-address`
+9. 配置DHCP客户端使用的DNS服务器的IP地址
+   `[Huawei-ip-pool-2] dns-list ip-address`
+10. 配置IP地址租期
+    `[Huawei-ip-pool-2] lease { day day [ hour hour [ minute minute ] ] | unlimited }`
+11. 使能接口的DHCP服务器功能
+    `[Huawei-Gigabitthernet0/0/0] dhcp select global`
+
+![接口DHCP](https://sre.ecarry.uk/attachments/20261023174020.png)
+**需求描述：**
+- 配置一台路由器作为DHCP服务器端，配置全局地址池ip pool 2为DHCP客户端分配IP地址；分配地址为1.1.1.0/24网段，网关地址1.1.1.1，DNS地址同样也是1.1.1.1，租期10天，在GE0/0/0接口下调用全局地址池。
+
+```bash
+dhcp enable
+ip pool 2
+network 10.1.1.0 mask 24
+gateway-list 10.1.1.1
+dns-list 10.1.1.1
+lease day 10
+interface g 0/0/0
+dhcp select global
+```
+
+
+#### 实例
+![接口DHCP](https://sre.ecarry.uk/attachments/20261023174932.png)
+**需求描述：**
+- vlan10 配置基于接口的DHCP
+- vlan20 配置基于全局的DHCP
+
+```bash
+# 左边配置接口DHCP
+dhcp enable
+vlan 10
+dhcp select interface
+dhcp server excluded-ip-address 192.168.10.101 192.168.10.253
+dhcp server lease day 3
+
+# 右边配置全局DHCP
+dhcp enable
+ip pool 20
+network 192.168.20.0 mask 24
+gateway-list 192.168.20.254
+dns-list 192.168.20.254
+excluded-ip-address 192.168.20.101 192.168.20.253
+lease day 3
+vlan 20
+dhcp select global
+```
+
+### 8.2.4 STP配置
+
+
+
+
+
+## 8.3 路由器的配置
+
+### 8.3.1 NAT配置
+- 随着互联网用户的增多，IPv4的公有地址资源显得越发短缺。
+- 同时IPv4公有地址资源存在地址分配不均的问题，这导致部分地区的IPv4可用公有地址严重不足。
+- 一方面==NAT缓解了IPv4地址短缺的问题==，另一方面NAT技术让外网无法直接与使用私有地址的内网进行通信，==提升了内网的安全性==。
+
+#### NAT技术原理
+- NAT：对IP数据报文中的IP地址进行转换，是一种在现网中被广泛部署的技术，一般部署在网关设备，例如路由器或防火墙上。
+- NAT的典型应用场景：在私有网络内部（园区、家庭）使用私有地址，出口设备部署NAT，对于“从内到外”的流量，网络设备通过NAT将数据包的源地址进行转换（转换成特定的公有地址），而对于“从外到内的”流量，则对数据包的目的地址进行转换。
+- 通过私有地址的使用结合NAT技术，可以有效节约公网IPv4地址。
+
+![NAT](https://sre.ecarry.uk/attachments/20261022150933.png)
+
+#### 静态NAT
+##### 原理
+- 静态NAT：每个私有地址都有一个与之对应并且固定的公有地址，即私有地址和公有地址之间是一对一映射。
+- 支持双向互访：私有地址访问Internet经过出口设备NAT转换时，会被转换成对应的公有地址。同时，外部网络访问内部网络时，其报文中携带的公有地址（目的地址）也会被NAT设备转换成对应的私有地址。
+![静态NAT](https://sre.ecarry.uk/attachments/20261022151109.png)
+
+##### 配置
+1. 方式一：接口视图下配置静态NAT
+   `[Huawei-GigabitEthernet0/0/0] nat static global { global-address} inside {host-address }`
+   global参数用于配置**外部公有地址**，inside参数用于配置**内部私有地址**。
+2. 方式二：系统视图下配置静态NAT
+   `[Huawei] nat static global { global-address} inside {host-address }`
+   配置命令相同，视图为系统视图，之后在具体的接口下开启静态NAT。
+   `[Huawei-GigabitEthernet0/0/0] nat static enable`
+   在接口下使能nat static功能。
+
+#### 动态NAT
+##### 原理
+- 动态NAT：静态NAT严格地一对一进行地址映射，这就导致即便内网主机长时间离线时，与之对应的公有地址也处于使用状态。为了避免地址浪费，动态NAT提出了地址池的概念：所有可用的公有地址组成地址池。
+- 当内部主机访问外部网络时临时分配一个地址池中未使用的地址，并将该地址标记为“**In Use**”。当该主机不再访问外部网络时回收分配的地址，重新标记为“**Not Use**”。
+![动态NAT](https://sre.ecarry.uk/attachments/20261022151926.png)
+##### 配置
+1. 创建地址池
+   `[Huawei] nat address-group group-index start-address end-address`
+   配置公有地址范围，其中group-index为地址池编号，start-address、end-address分别为地址池起始地址、结束地址。
+2. 配置地址转换的ACL规则
+   `[Huawei] acl number`
+   `[Huawei-acl-basic-number] rule permit source source-address source-wildcard`
+   配置基础ACL，匹配需要进行动态转换的源地址范围。
+3. 接口视图下配置带地址池的NAT Outbound
+   `[Huawei-GigabitEthernet0/0/0] nat outbound acl-number address-group group-index [ no-pat ]`
+   接口下关联ACL与地址池进行动态地址转换，**no-pat**参数指定**不进行端口转换**。
+
+##### 示例
+![动态NAT示例](https://sre.ecarry.uk/attachments/20261022152437.png)
+
+在R1上配置动态NAT将内网主机的私有地址动态映射到公有地址。
+
+```bash
+[R1]nat address-group 1 122.1.2.1 122.1.2.3
+[R1]acl 2000
+[R1-acl-basic-2000]rule 5 permit source 192.168.1.0 0.0.0.255
+[R1-acl-basic-2000]quit
+[R1]interface GigabitEthernet0/0/1
+[R1-GigabitEthernet0/0/1]nat outbound 2000 address-group 1 no-pat
+```
+
+#### NAPT⭐️
+##### 原理
+- 动态NAT选择地址池中的地址进行地址转换时不会转换端口号，即No-PAT（No-Port Address Translation，非端口地址转换），公有地址与私有地址还是1:1的映射关系，无法提高公有地址利用率。
+- NAPT（Network Address and Port Translation，网络地址端口转换）：从地址池中选择地址进行地址转换时不仅转换IP地址，同时也会对端口号进行转换，从而实现公有地址与私有地址的1:n映射，可以有效提高公有地址利用率。
+![NAPT](https://sre.ecarry.uk/attachments/20261022153221.png)
+##### 配置
+![NAPT配置](https://sre.ecarry.uk/attachments/20261022153424.png)
+在R1上配置NAPT让内网所有私有地址通过122.1.2.1访问公网。
+
+```bash
+[R1] nat address-group 1 122.1.2.1 122.1.2.1
+[R1] acl 2000
+[R1-acl-basic-2000] rule 5 permit source 192.168.1.0 0.0.0.255
+[R1-acl-basic-2000] quit
+[R1] interface GigabitEthernet0/0/1
+[R1-GigabitEthernet0/0/1] nat outbound 2000 address-group 1
+```
+ 
+
+#### Easy-IP⭐️ 
+##### 原理
+- Easy IP：实现原理和NAPT相同，同时转换IP地址、传输层端口，区别在于Easy IP没有地址池的概念，使用**接口地址**作为NAT转换的公有地址。
+- **Easy IP适用于不具备固定公网IP地址的场景**：如通过DHCP、PPPoE拨号获取地址的私有网络出口，可以直接使用获取到的动态地址进行转换。
+
+##### 配置
+![easy-ip配置](https://sre.ecarry.uk/attachments/20261022154041.png)
+
+在R1上配置Easy-IP让内网所有私有地址通过122.1.2.1访问公网。
+
+```bash
+[R1] acl 2000
+[R1-acl-basic-2000] rule 5 permit source 192.168.1.0 0.0.0.255
+[R1-acl-basic-2000] quit
+[R1] interface GigabitEthernet0/0/1
+[R1-GigabitEthernet0/0/1] nat outbound 2000
+```
+
+#### NAT Server⭐️
+##### 原理
+- NAT Server：指定[**公有地址:端口**]与[**私有地址:端口**]的**一对一**映射关系，将**内网服务器映射到公网**，当私有网络中的服务器需要对公网提供服务时使用。
+- 外网主机主动访问[公有地址:端口]实现对内网服务器的访问。
+![NAT Server](https://sre.ecarry.uk/attachments/20261022154934.png)
+
+##### 配置
+![NAT s](https://sre.ecarry.uk/attachments/20261022155328.png)
+
+在R1上配置NAT Server将内网服务器192.168.1.10的80端口映射到公有地址122.1.2.1的80端口。
+
+```bash
+[R1] interface GigabitEthernet0/0/1
+[R1-GigabitEthernet0/0/1] ip address 122.1.2.1 24
+[R1-GigabitEthernet0/0/1] nat server protocol tcp global 122.1.2.1 www inside 192.168.1.10 80
+```
+
+#### 总结
+- 在私有网络内使用私有地址，并在网络出口使用NAT技术，可以有效减少网络所需的公有地址数目，NAT技术有效地缓解了IPv4公有地址短缺的问题。
+- 动态NAT、NAPT、Easy IP为私网主机访问公网提供源地址转换。
+- NAT Server实现了**内网主机对公网提供服务**。
+- 静态NAT提供了一对一映射，支持**双向互访**。
+
+### 8.3.2 RIP配置
+![RIP配置](https://sre.ecarry.uk/attachments/20261022232808.png)
+
+RIP配置：
+
+```bash
+# R1
+rip 1
+version 2
+network 100.0.0.0
+network 12.0.0.0
+network 13.0.0.0
+# R2
+rip 1
+version 2
+network 12.0.0.0
+network 23.0.0.0
+# R3
+rip 1
+version 2
+network 13.0.0.0
+network 23.0.0.0
+```
+
+### 8.3.3 OSPF配置
+![配置](https://sre.ecarry.uk/attachments/20261022232808.png)
+OSPF配置：
+
+```bash
+# R1
+ospf 1
+area 0
+network 100.1.1.0 0.0.0.255
+network 12.1.1.0 0.0.0.3 #11111100 -> 00000011 -> 3
+network 13.1.1.0 0.0.0.3
+# R2
+ospf 1
+area 0
+network 12.1.1.0 0.0.0.3
+network 23.1.1.0 0.0.0.3
+# R3
+ospf 1
+area 0
+network 13.1.1.0 0.0.0.3
+network 23.1.1.0 0.0.0.3
+# 查看ospf
+display ospf peer brief
+```
+
+
+### 8.3.4 BGP配置
+![配置](https://sre.ecarry.uk/attachments/20261022232808.png)
+BGP配置：
+
+```bash
+# R3（AS100） 和 R4（AS200） 在不同AS，属于 EBGP，其他在同AS的为 IBGP
+# R3
+bgp 100
+peer 34.1.1.2 as-number 200 # 配置对端（R4）的 ip 和 AS（200）
+# R4
+bgp 200
+peer 34.1.1.1 as-number 100
+peer 45.1.1.2 as-number 200
+# R5
+bgp 200
+peer 45.1.1.1 as-number 200
+# 查看bgp
+display bgp peer
+
+# PC2 网段宣告进BGP
+# R5
+bgp 200
+ipv4-family unicast # unicast 单播
+network 200.1.1.0 24
+
+# R3 上通过 EBGP 学来的路由引入到 OSPF 里面
+ospf 1
+import-route bgp
+# 100.1.1.0 网段在 OSPF，需要通过 EBGP 导给 R4
+bgp 100
+import-route ospf 1
+
+# R5 上学来的路由下一跳是 34.1.1.1，不可达无法加表
+# 方法一：
+[R5]ip route-static 34.1.1.0 30 45.1.1.1
+# 方法一：
+[R4]bgp 200
+[R4]peer 45.1.1.2 next-hop-local
+```
+
+• 单播 (Unicast)：一对一（1对1）
+• 广播 (Broadcast)：一对所有（1对所有子网主机）
+• 组播 / 多播 (Multicast)：一对多（1对特定的接收者群体）
+• 任播 (Anycast)：一对最近的目标
+
+### 8.3.5 路由策略
+- 路由策略
+  - 是通过 ==ACL== 等方式控制路由发布，让对方学到适当路由条目，比如有20条路由条目，只想让某个路由器学到10条，可以通过路由策略进行过滤。路由策略和策略路由是两种不同的机制
+- 策略路由：
+  - 通过定义策略和应用，实现数据==流量==按照规划的路径走，比如张三走联通出口，李四走电信出口（策略路由的优先级比普通路由表优先级更高）。
+
+主要区别如下：
+
+| 路由策略                               | 策略路由                                                                                                  |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 基于策略控制路由信息的引入、发布、接收 | 基于策略控制报文的转发,即可以不按照路由表转发报文,而是通过按照策略需要转发,转发失败后再通过查找路由表转发 |
+| 基于控制平面,为路由协议和路由表服务    | 基于转发平面,为转发策略服务                                                                               |
+| 与路由协议结合完成策略                 | 需要手工逐跳配置,以保证报文按策略转发                                                                     |
+| 应用命令 route-policy                  | 应用命令 traffic-policy                                                                                   |
+
+#### 配置
+![路由策略](https://sre.ecarry.uk/attachments/20261023201500.png)
+
+1. 让 R3 可以学到 10.1.2.0/24 和 10.1.1.3.0/24 路由，不能学到 10.1.1.0/24。
+2. 让 R2 向 R1 通告 R3 的三个环回接口，cost 设置为 10。
+
+```bash
+# R1 基本配置
+interface g 0/0/0
+ip address 12.1.1.1 30
+interface loopback 0
+ip address 10.1.1.1 24
+interface loopback 1
+ip address 10.1.2.1 24
+interface loopback 2
+ip address 10.1.3.1 24
+# R1 RIP
+rip 1
+version 2
+network 12.0.0.0
+network 10.0.0.0 
+
+# R2 RIP
+rip 1
+version 2
+network 12.0.0.0
+
+# R2 OSPF
+ospf 1
+area 0
+network 23.1.1.0 0.0.0.3 
+
+# R2 ACL 过滤 10.1.1.0/24
+acl 2000
+rule 10 permit source 10.1.2.0 0.0.0.255
+rule 20 permit source 10.1.3.0 0.0.0.255
+
+route-policy 10 permit node 10
+if-match acl 2000
+
+# R2 import route
+ospf 1
+import-route rip 1 route-policy 10
+
+# ACL 
+acl 2001
+rule 10 permit source 30.1.1.0 0.0.0.255
+route-policy 20 permit node 10
+if-match acl 2001
+apply cost 10
+
+rip 1
+version 2
+import osfp 1 route-policy 20
+
+# R3 OSPF
+ospf 1
+area 0
+network 23.1.1.0 0.0.0.3
+network 30.1.1.0 0.0.0.255
+network 30.1.2.0 0.0.0.255
+network 30.1.3.0 0.0.0.255
+# 或者一条宣告所有地址 network 0.0.0.0 0.0.0.0
+```
+
+
+### 8.3.6 浮动路由
+![浮动路由](https://sre.ecarry.uk/attachments/20261023205813.png)
+浮动路由（Floating Static Route）配置的关键在于**利用“管理距离（优先级）”来设置备份链路**。核心要点如下：
+
+1. **核心思想：一主一备**
+   平时流量走主链路，只有当主链路故障（接口Down或路由失效）时，备用链路（浮动路由）才会出现在路由表中并接管流量。
+2. **关键参数：调整优先级（Preference / AD）**
+   * 在华为设备中，静态路由默认优先级为 **60**。
+   * 配置浮动路由时，**必须将备用路由的优先级数值改大**（例如设为 80 或 100），使其在平时“隐藏”在路由表中（优先级数值越大，路由越不优先）。
+3. **配置命令示例（华为）**
+   ```bash
+   # 主路由（默认优先级 60）
+   [Router] ip route-static 192.168.2.0 24 10.1.1.2
+   # 浮动路由（修改优先级为 80，作为备用）
+   [Router] ip route-static 192.168.2.0 24 10.1.2.2 preference 80
+   ```
+
+#### BFD 网络质量探测
+BFD（Bidirectional Forwarding Detection，双向转发检测）用于快速检测系统设备之间的发送和接受两个方向的通信故障，并在出现故障时通知生成应用。BFD广泛用于链路故障检测，并能实现与接口、静态路由、动态路由等联动检测。BFD协议使用的默认组播地址是 224.0.0.184。
+![BFD](https://sre.ecarry.uk/attachments/20261023220513.png)
+
+```bash
+# R1
+bfd
+# 配置名称为 bfdR1R2 的 BFD
+bfd bfdR1R2 bind peer-ip 12.1.1.2 source-ip 12.1.1.1
+commit
+# 配置静态路由且跟踪 bfdR1R2
+ip route-static 2.2.2.0 24 12.1.1.2 track bfd-session bfdR1R2
+# 创建bfd单臂回声会话
+bfd 123 bind peer-ip 12.1.1.2 source-ip 12.1.1.1 one-arm-echo
+commit
+```
+
+## 8.4 IPSec配置
+
+## 8.5 ACL配置
+
+### 8.5.1 ACL概述
+![ACL组成](https://sre.ecarry.uk/attachments/20261022110141.png)
+- ACL是由一系列**permit**或**deny**语句组成的、有序规则的列表。
+- ACL是一个匹配工具，能够对报文进行匹配和区分。
+
+![报文](https://sre.ecarry.uk/attachments/20261022105640.png)
+ACL应用：
+- 匹配IP流量
+- 在Traffic-filter中被调用
+- 在NAT（Network Address Translation）中被调用
+- 在路由策略中被调用
+- 在防火墙的策略部署中被调用
+- 在QoS中被调用
+- 其他......
+
+#### 通配符
+特殊的通配符
+- 精确匹配192.168.1.1这个IP地址
+  `192.168.1.1 0.0.0.0` = `192.168.1.1 0`
+- 匹配所有IP地址
+  `0.0.0.0 255.255.255.255` = `any`
+
+#### 分类
+- 基于ACL规则定义方式的分类
+![基本ACL](https://sre.ecarry.uk/attachments/20261022111252.png)
+![高级ACL](https://sre.ecarry.uk/attachments/20261022111309.png)
+| 分类          | 编号范围  | 规则定义描述                                                                                                                                                          |
+| ------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **基本ACL**   | 2000~2999 | 仅使用报文的**源IP地址**、分片信息和生效时间段信息来定义规则。                                                                                                        |
+| **高级ACL**   | 3000~3999 | 可使用IPv4报文的**源IP地址、目的IP地址、IP协议类型、ICMP类型、TCP源/目的端口号、UDP源/目的端口号、生效时间段**等来定义规则。                                          |
+| 二层ACL       | 4000~4999 | 使用报文的以太网帧头信息来定义规则，如根据源MAC地址、目的MAC地址、二层协议类型等。                                                                                    |
+| 用户自定义ACL | 5000~5999 | 使用报文头、偏移位置、字符串掩码和用户自定义字符串来定义规则。                                                                                                        |
+| 用户ACL       | 6000~6999 | 既可使用IPv4报文的源IP地址或源UCL（User Control List）组，也可使用目的IP地址或目的UCL组、IP协议类型、ICMP类型、TCP源端口/目的端口、UDP源端口/目的端口号等来定义规则。 |
+
+- 基于ACL标识方法的分类
+| 分类      | 规则定义描述                                                |
+| --------- | ----------------------------------------------------------- |
+| 数字型ACL | 传统的ACL标识方法。创建ACL时，指定一个唯一的数字标识该ACL。 |
+| 命名型ACL | 通过名称代替编号来标识ACL。                                 |
+
+#### ACL基础配置命令
+1. 创建基本ACL
+   `[Huawei] acl [ number ] acl-number [ match-order config ]`
+   使用编号（2000～2999）创建一个数字型的基本ACL，并进入基本ACL视图。
+   `[Huawei] acl name acl-name { basic | acl-number } [ match-order config ]`
+   使用名称创建一个命名型的基本ACL，并进入基本ACL视图。
+
+2. 配置基本ACL的规则
+   `[Huawei-acl-basic-2000] rule [ rule-id ] { deny | permit } [ source { source-address source-wildcard | any } | time-range time-name ]`
+   在基本ACL视图下，通过此命令来配置基本ACL的规则。
+
+#### ACL高级配置命令
+1. 创建高级ACL
+   `[Huawei] acl [ number ] acl-number [ match-order config ]`
+   使用编号（3000～3999）创建一个数字型的高级ACL，并进入高级ACL视图。
+
+   `[Huawei] acl name acl-name { advance | acl-number } [ match-order config ]`
+   使用名称创建一个命名型的高级ACL，进入高级ACL视图。
+
+2. 配置基本ACL的规则
+根据IP承载的协议类型不同，在设备上配置不同的高级ACL规则。对于不同的协议类型，有不同的参数组合。
+- 当参数protocol为**IP**时，高级ACL的命令格式为
+  `rule [ rule-id ] { deny | permit } ip [ destination { destination-address destination-wildcard | any } | source { source-address source-wildcard | any } | time-range time-name | [ dscp dscp | [ tos tos | precedence precedence ] ] ]`
+  在高级ACL视图下，通过此命令来配置高级ACL的规则。
+
+- 当参数protocol为**TCP**时，高级ACL的命令格式为
+  `rule [ rule-id ] { deny | permit } { protocol-number | tcp } [ destination { destination-address destination-wildcard | any } | destination-port { eq port | gt port | lt port | range port-start port-end } | source { source-address source-wildcard | any } | source-port { eq port | gt port | lt port | range port-start port-end } | tcp-flag { ack | fin | syn } * | time-range time-name ] *`
+  在高级ACL视图下，通过此命令来配置高级ACL的规则。
+
+#### 案例一
+![ACL案例](https://sre.ecarry.uk/attachments/20261022143921.png)
+
+**配置需求：**
+- 某公司通过Router实现各部门之间的互连。为方便管理网络，管理员为公司的研发部和市场部规划了两个网段的IP地址。
+- 现要求Router能够限制两个网段之间互访，防止公司机密泄露。
+
+1、Router已完成IP地址和路由的相关配置。
+
+2、创建高级ACL 3001并配置ACL规则，拒绝研发部访问市场部的报文：
+```text
+[Router] acl 3001
+[Router-acl-adv-3001] rule deny ip source 10.1.1.0 0.0.0.255 destination 10.1.2.0 0.0.0.255
+[Router-acl-adv-3001] quit
+```
+
+3、创建高级ACL 3002并配置ACL规则，拒绝市场部访问研发部的报文：
+```text
+[Router] acl 3002
+[Router-acl-adv-3002] rule deny ip source 10.1.2.0 0.0.0.255 destination 10.1.1.0 0.0.0.255
+[Router-acl-adv-3002] quit
+```
+
+4、由于研发部和市场部互访的流量分别从接口GE0/0/1和GE0/0/2进入Router，所以在接口GE0/0/1和GE0/0/2的**入方向**配置流量过滤：
+```text
+[Router] interface GigabitEthernet 0/0/1
+[Router-GigabitEthernet0/0/1] traffic-filter inbound acl 3001
+[Router-GigabitEthernet0/0/1] quit
+
+[Router] interface GigabitEthernet 0/0/2
+[Router-GigabitEthernet0/0/2] traffic-filter inbound acl 3002
+[Router-GigabitEthernet0/0/2] quit
+```
+
+#### 案例二
+![ACL配置二](https://sre.ecarry.uk/attachments/20261022145726.png)
+
+```bash
+acl 3000
+rule 10 deny ip source 192.168.1.0 0.0.0.255 destination 192.168.3.100 0
+rule 20 permit ip source 192.168.2.0 0.0.0.255 destination 192.168.3.100 0
+rule 30 deny ip source any destination 192.168.3.100 0
+
+interface gigabitEnternet 0/0/2
+traffic-filter outbound acl 3000
+```
+#### 总结
+- ACL是一种应用非常广泛的网络技术。它的基本原理是：配置了ACL的网络设备根据事先设定好的报文匹配规则对经过该设备的报文进行匹配，然后对匹配上的报文执行事先设定好的处理动作。这些匹配规则及相应的处理动作是根据具体的网络需求而设定的。处理动作的不同以及匹配规则的多样性，使得ACL可以发挥出各种各样的功效。
+- ACL技术总是**与防火墙、路由策略、QoS、流量过滤**等其他技术结合使用。
+- 在本章节中，主要介绍了ACL的相关技术知识，包括：ACL的作用，ACL的组成、匹配和分类、通配符的使用方法，以及ACL的基本配置及应用。
+
+## 8.6 VRRP
+### 8.6.1 原理
+- Virtual Router Redundancy Protocol，中文译为**虚拟路由器冗余协议**。
+- 通过把几台路由设备联合组成一台虚拟的“路由设备”，使用一定的机制保证当主路由器出现故障时，及时将业务切换到备份路由设备，从而保持通讯的连续性和可靠性。
+
+![VRRP VRID](https://sre.ecarry.uk/attachments/20261022163654.png)
+
+- **VRRP路由器**：运行VRRP协议的路由器，如R1和R2。
+- **VRID**：一个VRRP组（VRRP Group）由多台协同工作的路由器（的接口）组成，使用相同的VRID（Virtual Router Identifier，虚拟路由器标识符）进行标识。属于同一个VRRP组的路由器之间交互VRRP协议报文并产生一台虚拟“路由器”。一个VRRP组中只能出现一台Master路由器。
+- **虚拟路由器**：VRRP为每一个组抽象出一台虚拟“路由器”（Virtual Router），该路由器并非真实存在的物理设备，而是由VRRP虚拟出来的逻辑设备。一个VRRP组只会产生一台虚拟路由器。
+
+![VIP VMAC](https://sre.ecarry.uk/attachments/20261022164034.png)
+- **虚拟IP地址及虚拟MAC地址**：虚拟路由器拥有自己的IP地址以及MAC地址，其中IP地址由网络管理员在配置VRRP时指定，一台虚拟路由器可以有一个或多个IP地址，通常情况下用户使用该地址作为网关地址。而虚拟MAC地址的格式是“0000-5e00-01xx”，其中xx为VRID。
+- **Master路由器**：“Master路由器”在一个VRRP组中承担报文转发任务。在每一个VRRP组中，只有Master路由器才会响应针对虚拟IP地址的ARP Request。Master路由器会以一定的时间间隔周期性地发送VRRP报文，以便通知同一个VRRP组中的Backup路由器关于自己的存活情况。
+
+![优先级](https://sre.ecarry.uk/attachments/20261022164114.png)
+- **Backup路由器**：也被称为备份路由器。Backup路由器将会实时侦听Master路由器发送出来的VRRP报文，它随时准备接替Master路由器的工作。
+- **Priority**：优先级值是选举Master路由器和Backup路由器的依据，优先级取值范围0-255，值越大越优先，值相等则比较接口IP地址大小，大者优先。
+
+### 8.6.2 应用
+#### VRRP负载分担
+- 通过创建多个虚拟路由器，每个物理路由器在不同的VRRP组中扮演不同的角色，不同虚拟路由器由Virtual IP作为不同的内网网关地址可以实现流量转发负载分担。
+![负载分担](https://sre.ecarry.uk/attachments/20261022164327.png)
+
+#### VRRP和MSTP结合
+![VRRP MSTP](https://sre.ecarry.uk/attachments/20261023111210.png)
+
+
+#### VRRP监视上行端口
+![监视](https://sre.ecarry.uk/attachments/20261023111254.png)
+
+VRRP可监视（Track）上行端口状态，当设备感知上行端口或者链路发生故障时，可主动降低VRRP优先级，从而保证上行链路正常的Backup设备能够通过选举切换为Master状态，指导报文转发。
+
+#### VRRP与BFD联动
+![VRRP BFD](https://sre.ecarry.uk/attachments/20261023121822.png)
+
+- 通过配置VRRP与BFD联动，当Backup设备通过BFD感知故障发生之后，不再等待Master_Timer计时器超时而会在BFD检测周期结束后立即切换VRRP状态，此时可以实现==毫秒级的主备切换==。
+**BFD（Bidirectional Forwarding Detection，双向转发检测）**主要用于在两点之间快速检测链路或路径的故障。它的核心作用可以概括为以下几点：
+   1. **快速故障检测**：BFD 能够提供毫秒级的故障检测机制。相比传统的路由协议（如 OSPF、BGP）自带的慢速 Hello 机制，BFD 能极快地发现链路中断。
+   2. **轻量级通用协议**：BFD 本身不依赖任何特定的路由协议，它是一个通用的底层检测机制，可以与 OSPF、BGP、静态路由、VRRP 等多种上层协议联动。
+   3. **触发快速倒换（联动）**：当 BFD 检测到链路故障时，会立即通知联动的上层应用（如 VRRP 立即切换主备状态，或路由协议立即重新计算路由），从而实现业务的快速收敛，减少网络中断时间。
+   4. **双向链路检测**：它可以同时检测正向和反向链路的连通性。
+**简单来说：** BFD 就像是网络中的“心电监护仪”，持续、快速、轻量地监测链路是否存活，一旦发现断连，立刻通知相关协议采取补救措施（如切换备用链路或设备），保证网络的高可用性。
+
+### 8.6.3 基本配置
+1. 创建VRRP备份组并给备份组配置虚拟IP地址 ==vrid== ==virtual-ip==
+   `[interface-GigabitEthernet0/0/0] vrrp vrid virtual-router-id virtual-ip virtual-address`
+   注意：各备份组之间的虚拟IP地址不能重复；同属一个备份组的设备接口需使用相同的VRID。
+2. 配置路由器在备份组中的优先级 ==priority==
+   `[interface-GigabitEthernet0/0/0] vrrp vrid virtual-router-id priority priority-value`
+   注意：通常情况下，Master设备的优先级应高于Backup设备。
+3. 配置备份组中设备的抢占延迟时间 ==preempt-mode timer delay==
+   `[interface-GigabitEthernet0/0/0] vrrp vrid virtual-router-id preempt-mode timer delay delay-value`
+4. 配置VRRP备份组中设备采用==非抢占模式==（preempt-mode disable）
+   `[interface-GigabitEthernet0/0/0] vrrp vrid virtual-router-id preempt-mode disable`
+   缺省情况下，==抢占模式==（preempt-mode enable）已被激活。
+5. 配置VRRP备份组==监视接口== ==track interface==
+   `[interface-GigabitEthernet0/0/0] vrrp vrid virtual-router-id track interface interface-type interface-number [ increased value-increased | reduced value-decreased ]`
+   可配置设备当检测到上行接口或链路出现故障时，增加或者减少自身优先级，IP地址拥有者和Eth-trunk成员口不允许配置VRRP监视功能。
+6. 配置VRRP备份组联动普通BFD会话
+   `[interface-GigabitEthernet0/0/0] vrrp vrid virtual-router-id track bfd-session { bfd-session-id | session-name bfd-configure-name } [ increased value-increased | reduced value-reduced ]`
+   如果选择参数session-name bfd-configure-name，可以绑定静态BFD会话或者标识符自协商的静态BFD会话。
+   如果选择参数bfd-session-id，只能绑定静态BFD会话。
+
+#### 基础配置实例
+![VRRP](https://sre.ecarry.uk/attachments/20261023122455.png)
+
+**配置要求：**
+- R1与R2组成一个VRRP备份组，其中R1为Master，R2为Backup；
+- Master设备故障恢复时采用抢占模式，抢占延时10秒；
+- Master设备监视上行接口状态实现VRRP主备自动切换。
+
+**R1配置如下：**
+```bash
+[R1] interface GigabitEthernet0/0/0
+[R1-GigabitEthernet0/0/0] ip address 192.168.1.253 24
+[R1-GigabitEthernet0/0/0] vrrp vrid 1 virtual-ip 192.168.1.254
+[R1-GigabitEthernet0/0/0] vrrp vrid 1 priority 120                                          # 配置优先级
+[R1-GigabitEthernet0/0/0] vrrp vrid 1 preempt-mode timer delay 10                           # 抢占延迟 10s
+[R1-GigabitEthernet0/0/0] vrrp vrid 1 track interface GigabitEthernet0/0/1 reduced 30       # 跟踪上行接口，断开后优先级减30
+[R1]display vrrp
+GigabitEthernet0/0/0 | Virtual Router 1            #VRRP组ID为 1
+  State : Master    #本设备在组中状态为Master
+  Virtual IP : 192.168.1.254
+  Master IP : 192.168.1.253
+  PriorityRun : 120 #接口在本VRRP组中优先级为120
+  PriorityConfig : 120
+  MasterPriority : 120
+  Preempt : YES  Delay Time : 10 s      #开启抢占模式，且延迟时间为10秒
+  TimerRun : 1 s
+  TimerConfig : 1 s
+  Auth type : NONE
+  Virtual MAC : 0000-5e00-0101
+  Check TTL : YES
+  Config type : normal-vrrp
+  Track IF : GigabitEthernet0/0/1  Priority reduced : 30
+  IF state : UP
+```
+
+**R2配置如下：**
+```bash
+[R2] interface GigabitEthernet0/0/0
+[R2-GigabitEthernet0/0/0] ip address 192.168.1.252 24
+[R2-GigabitEthernet0/0/0] vrrp vrid 1 virtual-ip 192.168.1.254
+[R2-GigabitEthernet0/0/0] vrrp vrid 1 priority 110
+[R2]display vrrp
+GigabitEthernet0/0/0 | Virtual Router 1
+  State : Backup   #本设备在组中状态为Backup
+  Virtual IP : 192.168.1.254
+  Master IP : 192.168.1.253
+  PriorityRun : 110 #接口在本VRRP组中优先级为110
+  PriorityConfig : 110
+  MasterPriority : 120
+  Preempt : YES  Delay Time : 0 s      #开启抢占模式，延迟时间为0秒
+  TimerRun : 1 s
+  TimerConfig : 1 s
+  Auth type : NONE
+  Virtual MAC : 0000-5e00-0101
+  Check TTL : YES
+  Config type : normal-vrrp
+```
+
+
+### 8.6.4 示例
+![示例](https://sre.ecarry.uk/attachments/20261023141433.png)
+
+接入交换机acsw：
+
+```bash
+sysname acsw
+[acsw] interface g 0/0/3
+port link-tpe access
+port default vlan 10
+
+[acsw] interface g 0/0/1
+port link-type trunk
+port trunk allow-pass vlan all
+
+[acsw] interface g 0/0/2
+port link-type trunk
+port trunk allow-pass vlan all
+```
+
+核心交换机coresw1:
+
+```bash
+vlan 10
+vlan 100
+[coresw1] interface g 0/0/1
+port link-type trunk
+port trunk allow-pass vlan all
+
+[coresw1] interface g 0/0/3
+port link-type trunk
+port trunk allow-pass vlan all
+
+[coresw1] interface g 0/0/2
+port link-type access
+port default vlan 100
+
+interface vlanif 10
+ip address 192.168.10.252 24
+
+interface vlanif 100
+ip address 192.168.100.1 30
+# 配置 VRRP
+interface vlanif 10
+vrrp vrid 10 virtual-ip 192.168.10.254
+vrrp vrid 10 priority 120
+vrrp vrid 10 preempt-mode timer delay 20
+vrrp vrid 10 track interface g 0/0/2 reduced 30
+# 配置默认路由
+ip route-static 0.0.0.0 0 192.168.100.2
+```
+
+核心交换机coresw2:
+
+```bash
+vlan 10
+vlan 200
+[coresw1] interface g 0/0/1
+port link-type trunk
+port trunk allow-pass vlan all
+
+[coresw1] interface g 0/0/3
+port link-type trunk
+port trunk allow-pass vlan all
+
+[coresw1] interface g 0/0/2
+port link-type access
+port default vlan 200
+
+interface vlanif 10
+ip address 192.168.10.253 24
+
+interface vlanif 200
+ip address 192.168.200.1 30
+# 配置 VRRP
+interface vlanif 10
+vrrp vrid 10 virtual-ip 192.168.10.254
+# 配置默认路由
+ip route-static 0.0.0.0 0 192.168.200.2
+```
+
+路由器AR1:
+
+```bash
+[AR1] interface g 0/0/1
+ip address 192.168.100.2 30
+
+[AR1] interface g 0/0/2
+ip address 192.168.200.2 30
+
+[AR1] interface g 0/0/0
+ip address 100.1.1.2 30
+# 配置静态路由
+ip route-static 192.168.10.1 24 192.168.100.1
+ip route-static 192.168.10.1 24 192.168.200.1
+```
